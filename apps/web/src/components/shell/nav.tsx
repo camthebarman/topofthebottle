@@ -34,7 +34,7 @@ export function BottomNav() {
   const path = usePathname();
   const moreActive = SECONDARY.some((i) => active(path, i.href));
   return (
-    <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden">
+    <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden print:hidden">
       <ul className="grid grid-cols-5">
         {PRIMARY.map((item) => {
           const on = active(path, item.href) || (item.href === "/more" && moreActive);

@@ -16,12 +16,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-7xl gap-6 px-4 pb-24 pt-3 lg:px-6 lg:pb-8">
-      <aside className="hidden w-56 shrink-0 lg:block">
+      <aside className="hidden w-56 shrink-0 lg:block print:hidden">
         <Link href="/today" className="mb-6 block px-3 pt-2 text-sm font-semibold uppercase tracking-widest text-accent">Table Zero Bar</Link>
         <SideNav />
       </aside>
       <div className="min-w-0 flex-1">
-        <header className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+        <header className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3 print:hidden">
           <form action={switchContext} className="flex min-w-0 items-center gap-2">
             <label htmlFor="ctx-switch" className="sr-only">Organization and location</label>
             <select id="ctx-switch" name="target" defaultValue={`${ctx.org.orgId}:${ctx.location.id}`} className="min-h-11 max-w-[14rem] truncate rounded-lg border border-border bg-surface px-2 text-sm sm:max-w-xs">
