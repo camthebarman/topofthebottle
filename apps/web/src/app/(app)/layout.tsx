@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { SignOutButton } from "@/components/drafts";
 import { BottomNav, SideNav } from "@/components/shell/nav";
 import { buttonClass } from "@/components/ui";
 import { getContext } from "@/lib/session";
@@ -42,9 +43,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <Link href="/notifications" className={buttonClass("ghost", "px-3 text-sm")} aria-label={`Notifications${count ? `, ${count} unread` : ""}`}>
               Alerts{count ? <span className="rounded-full bg-accent px-1.5 text-xs text-accent-fg">{count}</span> : null}
             </Link>
-            <form action={signOut}>
-              <button type="submit" className={buttonClass("ghost", "px-3 text-sm")}>Sign out</button>
-            </form>
+            <SignOutButton action={signOut} />
           </div>
         </header>
         {ctx.entitlement === "read_only" ? <p role="status" className="mb-3 rounded-lg border border-warn/50 bg-warn/10 p-2 text-sm">Subscription ended: read-only. <Link className="underline" href="/settings/billing">Billing</Link> · <Link className="underline" href="/settings/data">Export data</Link></p> : null}

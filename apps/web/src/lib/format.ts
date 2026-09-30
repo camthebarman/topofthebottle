@@ -15,7 +15,8 @@ export function pct(v: Decimal | number | null | undefined, digits = 1): string 
 export function num(v: Decimal | string | number | null | undefined, maxDigits = 2): string {
   if (v === null || v === undefined || v === "") return "—";
   const n = typeof v === "object" ? v.toNumber() : Number(v);
-  return new Intl.NumberFormat("en-US", { maximumFractionDigits: maxDigits }).format(n);
+  const out = new Intl.NumberFormat("en-US", { maximumFractionDigits: maxDigits }).format(n);
+  return /^-0(\.0+)?$/.test(out) ? "0" : out;
 }
 
 const DISPLAY: Record<Dimension, { unit: string; label: string }[]> = {

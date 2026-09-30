@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { ClearDrafts } from "@/components/drafts";
 import { Badge, Card, Notice, PageHeader } from "@/components/ui";
 import { dateLabel } from "@/lib/format";
 import { getContext } from "@/lib/session";
@@ -26,7 +27,7 @@ export default async function EntryPage({ params, searchParams }: { params: Prom
     <>
       <PageHeader title={e.title} description={<>{e.category} · {dateLabel(e.business_date)} · by {nameOf(e.author_id)} {e.visibility === "managers" ? <Badge tone="info">managers only</Badge> : null} {e.is_task ? <Badge tone={e.status === "open" ? "warn" : "ok"}>{e.status}</Badge> : null}</>} />
       <div className="space-y-4">
-        {sp.saved ? <Notice tone="ok" role="status">Saved.</Notice> : null}
+        {sp.saved ? <><Notice tone="ok" role="status">Saved.</Notice><ClearDrafts scope={`${app.user.id}:${app.org.orgId}:${e.location_id}`} names={["barbook-title", "barbook-body"]} /></> : null}
         <Card>
           <p className="whitespace-pre-line">{e.body || <span className="text-muted">No details.</span>}</p>
           {e.assigned_to ? <p className="mt-3 text-sm">Assigned to {nameOf(e.assigned_to)}{e.due_date ? `, due ${dateLabel(e.due_date)}` : ""}</p> : null}

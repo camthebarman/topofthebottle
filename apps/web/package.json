@@ -8,9 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run test/unit",
     "test:e2e": "playwright test",
-    "worker": "node --experimental-strip-types --conditions=react-server scripts/worker.ts"
+    "worker": "tsx --conditions=react-server --env-file=.env.local scripts/worker.ts",
+    "test:integration": "vitest run test/integration"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.130.0",
@@ -33,6 +34,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.8",
     "tailwindcss": "^4",
+    "tsx": "4.21.0",
     "typescript": "^5",
     "vitest": "4.1.11"
   },

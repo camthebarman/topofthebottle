@@ -51,7 +51,7 @@ export default async function BarBookPage({ searchParams }: { searchParams: Prom
         {app.can("barbook.write") ? (
           <details className="rounded-xl border border-border bg-surface p-4">
             <summary className="min-h-11 cursor-pointer py-2 text-lg font-semibold">Write an entry</summary>
-            <div className="mt-3"><EntryForm initial={BLANK_ENTRY} members={names} canManage={app.can("barbook.manage")} /></div>
+            <div className="mt-3"><EntryForm initial={BLANK_ENTRY} members={names} canManage={app.can("barbook.manage")} draftScope={`${app.user.id}:${app.org.orgId}:${app.location.id}`} /></div>
           </details>
         ) : null}
         <form role="search">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useDraft } from "@/components/drafts";
 import { ActionForm, fieldErrors, SubmitButton } from "@/components/forms";
 import { Checkbox, Field, Select, TextArea } from "@/components/ui";
 import { acknowledge, saveEntry, setResolved } from "./actions";
@@ -21,16 +22,30 @@ export interface EntryInitial {
 
 export const BLANK_ENTRY: EntryInitial = { entryId: "", version: "", category: "handoff", priority: "normal", title: "", body: "", visibility: "all", isTask: false, assignedTo: "", dueDate: "", requiresAck: false };
 
-export function EntryForm({ initial, members, canManage }: { initial: EntryInitial; members: { id: string; name: string }[]; canManage: boolean }) {
+export function EntryForm({ initial, members, canManage, draftScope }: { initial: EntryInitial; members: { id: string; name: string }[]; canManage: boolean; draftScope?: string }) {
   const [isTask, setIsTask] = useState(initial.isTask);
+  // Only new entries keep a draft; edits of existing entries start from the saved text.
+  const title = useDraft(draftScope ?? "none", "barbook-title");
+  const body = useDraft(draftScope ?? "none", "barbook-body");
+  const drafting = !!draftScope && !initial.entryId;
   return (
-    <ActionForm action={saveEntry}>
+    <ActionForm action={saveEntry} onSuccess={() => { title.clear(); body.clear(); }}>
       {(s) => (
         <>
           <input type="hidden" name="entryId" value={initial.entryId} />
           <input type="hidden" name="version" value={initial.version} />
-          <Field label="Title" name="title" defaultValue={initial.title} required errors={fieldErrors(s, "title")} />
-          <TextArea label="Details" name="body" defaultValue={initial.body} hint="Keep guest names and personal details out of the bar book." />
+          {drafting && (title.restored || body.restored) ? <p className="text-sm text-warn">Restored an unsent draft from this browser. It has not been posted.</p> : null}
+          {drafting ? (
+            <>
+              <Field label="Title" name="title" value={title.value} onChange={(e) => title.update(e.currentTarget.value)} required errors={fieldErrors(s, "title")} />
+              <TextArea label="Details" name="body" value={body.value} onChange={(e) => body.update(e.currentTarget.value)} hint="Keep guest names and personal details out of the bar book." />
+            </>
+          ) : (
+            <>
+              <Field label="Title" name="title" defaultValue={initial.title} required errors={fieldErrors(s, "title")} />
+              <TextArea label="Details" name="body" defaultValue={initial.body} hint="Keep guest names and personal details out of the bar book." />
+            </>
+          )}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <Select label="Category" name="category" defaultValue={initial.category}>
               <option value="handoff">Shift handoff</option>
