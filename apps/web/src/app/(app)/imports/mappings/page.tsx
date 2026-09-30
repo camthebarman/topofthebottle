@@ -2,7 +2,7 @@ import { UNITS } from "@tz/domain";
 import { Card, EmptyState, PageHeader } from "@/components/ui";
 import { must } from "@/lib/action";
 import { money, num } from "@/lib/format";
-import { getContext, requirePerm } from "@/lib/session";
+import { getContext, pagePerm } from "@/lib/session";
 import { loadCatalog } from "@/server/catalog";
 import { MapItemForm, MapModifierForm } from "../forms";
 
@@ -10,7 +10,7 @@ export const metadata = { title: "POS mappings" };
 
 export default async function MappingsPage() {
   const app = await getContext();
-  requirePerm(app, "imports.manage");
+  pagePerm(app, "imports.manage");
   const [cat, unmappedRes, modsRes, mapsRes, modMapsRes] = await Promise.all([
     loadCatalog(app),
     app.supabase.rpc("unmapped_sales_items", { p_org: app.org.orgId, p_location: app.location.id, p_limit: 50 }),

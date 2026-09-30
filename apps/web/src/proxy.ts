@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
-const PUBLIC_PATHS = ["/sign-in", "/sign-up", "/auth", "/invite", "/api/health", "/api/stripe/webhook", "/offline"];
+const PUBLIC_PATHS = ["/sign-in", "/sign-up", "/auth", "/invite", "/api/health", "/api/stripe/webhook", "/api/jobs/tick", "/offline"];
 
 function csp(nonce: string, supabaseUrl: string): string {
   const dev = process.env.NODE_ENV === "development";

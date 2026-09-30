@@ -2,13 +2,13 @@ import { Badge, Card, EmptyState, LinkButton, ListLink, PageHeader } from "@/com
 import { UploadForm } from "@/components/upload";
 import { must } from "@/lib/action";
 import { dateLabel } from "@/lib/format";
-import { getContext, requirePerm } from "@/lib/session";
+import { getContext, pagePerm } from "@/lib/session";
 
 export const metadata = { title: "Imports" };
 
 export default async function ImportsPage() {
   const app = await getContext();
-  requirePerm(app, "imports.manage");
+  pagePerm(app, "imports.manage");
   const rows = must(await app.supabase.from("pos_imports").select("id, status, kind, date_start, date_end, created_at, stats, documents(filename)").eq("location_id", app.location.id).order("created_at", { ascending: false }).limit(50)) as { id: string; status: string; kind: string; date_start: string | null; date_end: string | null; created_at: string; stats: { accepted?: number; inserted?: number }; documents: unknown }[];
   return (
     <>

@@ -11,6 +11,7 @@ import {
   summarize,
   validateProfile,
 } from "@tz/domain";
+import { fetchAll } from "@/lib/fetch-all";
 import { type JobContext, PermanentJobError } from "./queue";
 
 interface ImportRow {
@@ -130,8 +131,8 @@ export async function validatePosImport(ctx: JobContext): Promise<Record<string,
   // Coverage against current item mappings (remapping later does not require re-import).
   const acceptedSales = all.filter((s) => outcome.get(s) === "accepted");
   const summary = summarize(acceptedSales, rowsRead, quarantined.length);
-  const { data: maps } = await admin.from("pos_item_mappings").select("item_key").eq("location_id", row.location_id).is("effective_to", null);
-  const mappedKeys = new Set((maps ?? []).map((m: { item_key: string }) => m.item_key));
+  const maps = await fetchAll((a, b) => admin.from("pos_item_mappings").select("item_key").eq("location_id", row.location_id).is("effective_to", null).order("item_key").range(a, b));
+  const mappedKeys = new Set((maps as { item_key: string }[]).map((m) => m.item_key));
   const items = new Map<string, { name: string; qty: number; net: number; mapped: boolean }>();
   for (const s of acceptedSales) {
     if (s.parentLineId) continue;

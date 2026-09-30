@@ -4,7 +4,7 @@ import { d, fromBase, landedCosts, reconcileInvoice, UNITS } from "@tz/domain";
 import { Badge, Card, DataList, Notice, PageHeader } from "@/components/ui";
 import { must } from "@/lib/action";
 import { dateLabel, money, num } from "@/lib/format";
-import { getContext, requirePerm } from "@/lib/session";
+import { getContext, pagePerm } from "@/lib/session";
 import { orgSettings } from "@/server/menu";
 import { ApproveForm, HeaderForm, LineForm, ReceiveForm, RejectForm, RetryForm } from "./forms";
 
@@ -13,7 +13,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
   const sp = await searchParams;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const app = await getContext();
-  requirePerm(app, "invoices.upload");
+  pagePerm(app, "invoices.upload");
   const { data: inv } = await app.supabase.from("invoices").select("*, documents(id, filename, mime_type, page_count)").eq("id", id).maybeSingle();
   if (!inv) notFound();
   const [linesRes, suppliersRes, productsRes, extRes, recRes, dupRes, settings] = await Promise.all([

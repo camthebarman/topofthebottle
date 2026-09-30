@@ -2,12 +2,14 @@ import "server-only";
 import { after } from "next/server";
 import { log } from "@/lib/log";
 import { commitPosImport, validatePosImport } from "./pos";
+import { explainJob } from "./explain";
 import { extractInvoiceJob, markExtractionFailed } from "./invoice";
 import { type JobKind, onFinalFailureOf, registerHandler, runJobs } from "./queue";
 
 registerHandler("pos_import_validate", validatePosImport);
 registerHandler("pos_import_commit", commitPosImport);
 registerHandler("invoice_extract", extractInvoiceJob);
+registerHandler("insights_explain", explainJob);
 onFinalFailureOf("invoice_extract", (admin, job, message) => markExtractionFailed(admin, job, message));
 onFinalFailureOf("pos_import_validate", async (admin, job, message, cancelled) => {
   await admin.from("pos_imports").update({ status: cancelled ? "cancelled" : "failed", error: message.slice(0, 1000) }).eq("id", String(job.payload.importId));

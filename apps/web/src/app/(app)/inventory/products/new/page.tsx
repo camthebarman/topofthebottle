@@ -1,5 +1,5 @@
 import { Card, PageHeader } from "@/components/ui";
-import { getContext, requirePerm } from "@/lib/session";
+import { getContext, pagePerm } from "@/lib/session";
 import { ProductForm } from "../../forms";
 import { unitOptions } from "../../units";
 
@@ -7,7 +7,7 @@ export const metadata = { title: "Add product" };
 
 export default async function NewProductPage() {
   const app = await getContext();
-  requirePerm(app, "catalog.edit");
+  pagePerm(app, "catalog.edit");
   return (
     <>
       <PageHeader title="Add product" />

@@ -1,14 +1,14 @@
 import { Badge, Card, EmptyState, ListLink, PageHeader } from "@/components/ui";
 import { must } from "@/lib/action";
 import { dateLabel } from "@/lib/format";
-import { getContext, requirePerm } from "@/lib/session";
+import { getContext, pagePerm } from "@/lib/session";
 import { EventForm } from "./forms";
 
 export const metadata = { title: "Events" };
 
 export default async function EventsPage() {
   const app = await getContext();
-  requirePerm(app, "events.manage");
+  pagePerm(app, "events.manage");
   const events = must(await app.supabase.from("bev_events").select("id, name, event_date, guests, status").eq("location_id", app.location.id).order("event_date", { ascending: false }).limit(100)) as { id: string; name: string; event_date: string; guests: number; status: string }[];
   const today = new Date().toISOString().slice(0, 10);
   return (

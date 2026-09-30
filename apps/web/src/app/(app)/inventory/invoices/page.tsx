@@ -2,7 +2,7 @@ import { Badge, Card, EmptyState, ListLink, PageHeader, Pagination } from "@/com
 import { UploadForm } from "@/components/upload";
 import { must } from "@/lib/action";
 import { dateLabel, money } from "@/lib/format";
-import { getContext, requirePerm } from "@/lib/session";
+import { getContext, pagePerm } from "@/lib/session";
 
 export const metadata = { title: "Invoices" };
 const PAGE = 30;
@@ -13,7 +13,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
   const sp = await searchParams;
   const page = Math.max(1, Number(sp.page) || 1);
   const app = await getContext();
-  requirePerm(app, "invoices.upload");
+  pagePerm(app, "invoices.upload");
   const rows = must(
     await app.supabase
       .from("invoices")

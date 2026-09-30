@@ -5,7 +5,7 @@ import { DRINK_CATEGORIES, UNITS } from "@tz/domain";
 import { Badge, Card, DataList, LinkButton, Notice, PageHeader } from "@/components/ui";
 import { must } from "@/lib/action";
 import { dateLabel, money, num, qty } from "@/lib/format";
-import { getContext, requirePerm } from "@/lib/session";
+import { getContext, pagePerm } from "@/lib/session";
 import { type EventRow, eventPlan } from "@/server/events";
 import { EventForm, EventStockForm, FreezeQuoteForm, RecipeShareForm, StatusForm } from "../forms";
 
@@ -16,7 +16,7 @@ export default async function EventPage({ params, searchParams }: { params: Prom
   const sp = await searchParams;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const app = await getContext();
-  requirePerm(app, "events.manage");
+  pagePerm(app, "events.manage");
   const { data } = await app.supabase.from("bev_events").select("*").eq("id", id).maybeSingle();
   if (!data) notFound();
   const ev = data as EventRow;

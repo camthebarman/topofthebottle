@@ -1,5 +1,5 @@
 import { Card, PageHeader } from "@/components/ui";
-import { getContext, requirePerm } from "@/lib/session";
+import { getContext, pagePerm } from "@/lib/session";
 import { loadCatalog } from "@/server/catalog";
 import { RecipeEditor } from "../editor";
 import { editorOptions } from "../editor-data";
@@ -9,7 +9,7 @@ export const metadata = { title: "New recipe" };
 export default async function NewRecipePage({ searchParams }: { searchParams: Promise<{ kind?: string }> }) {
   const sp = await searchParams;
   const app = await getContext();
-  requirePerm(app, "recipes.edit");
+  pagePerm(app, "recipes.edit");
   const cat = await loadCatalog(app);
   const kind = sp.kind === "prep" || sp.kind === "dish" ? sp.kind : "drink";
   return (

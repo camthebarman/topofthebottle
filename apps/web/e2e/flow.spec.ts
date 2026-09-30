@@ -1,9 +1,9 @@
-import { expect, test } from "@playwright/test";
-import { expectNoHorizontalScroll, expectSaved, nyLocal, shot, signUp, toastCsv, uniqueEmail } from "./helpers";
+import { type Browser, expect, type Page, test } from "@playwright/test";
+import { expectNoHorizontalScroll, expectSaved, nyLocal, PASSWORD, shot, signUp, toastCsv, uniqueEmail } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
 
-test("owner sets up products, recipes, menu and a count", async ({ page }) => {
+test("full flow: organization to export", async ({ page, browser }) => {
   const owner = uniqueEmail("owner");
   await signUp(page, owner);
   await page.waitForURL(/onboarding/);
@@ -11,6 +11,17 @@ test("owner sets up products, recipes, menu and a count", async ({ page }) => {
   await page.getByLabel("Your name").fill("Owner One");
   await page.getByRole("button", { name: "Create" }).click();
   await page.waitForURL(/today/);
+
+  // ---------- invite a bartender ----------
+  const staffEmail = uniqueEmail("bartender");
+  await page.goto("/settings/members");
+  await page.getByLabel("Email").fill(staffEmail);
+  await page.getByLabel("Role", { exact: true }).selectOption("bartender");
+  await page.getByRole("button", { name: "Create invitation" }).click();
+  const inviteLink = (await page.locator("p.font-mono").innerText()).trim();
+  expect(inviteLink).toMatch(/\/invite\/[0-9a-f]{48}$/);
+  const staff = await acceptInvite(browser, staffEmail, new URL(inviteLink).pathname);
+  await shot(page, "00-invite");
 
   // Products: gin with a 750 mL bottle and a cost.
   for (const [name, price] of [["Beefeater Gin", "24"], ["Campari", "30"], ["Cocchi Torino", "22"]] as const) {
@@ -170,4 +181,145 @@ test("owner sets up products, recipes, menu and a count", async ({ page }) => {
   // Staff names from the Server column are never stored.
   await expect(page.getByText("Alex Example")).toHaveCount(0);
   await shot(page, "08-import-report");
+
+  // ---------- closing count and variance ----------
+  await page.goto("/inventory/counts");
+  await page.getByLabel("Name (optional)").fill("Close");
+  await page.getByRole("button", { name: "Start a count" }).click();
+  await page.waitForURL(/inventory\/counts\/[0-9a-f-]{36}/);
+  await page.getByPlaceholder("Find a product to count").fill("Beefeater");
+  await page.keyboard.press("Enter");
+  await page.getByRole("link", { name: /Beefeater Gin/ }).click();
+  await page.getByLabel("Full bottle").fill("14");
+  await page.getByLabel("Open one (0–10 tenths)").fill("1");
+  await page.getByRole("button", { name: "Save count" }).click();
+  await expectSaved(page, /Counted/);
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "Finalize count" }).click();
+  await page.waitForURL(/finalized=1/);
+
+  // Enable AI explanations (development stub provider) to exercise the pipeline.
+  await page.goto("/settings");
+  await page.getByLabel("Offer AI explanations in Insights").check();
+  await page.getByRole("button", { name: "Save settings" }).click();
+  await expectSaved(page, /Settings saved/);
+
+  await page.goto("/insights");
+  const gin = page.locator("li").filter({ has: page.getByText("Beefeater Gin", { exact: true }) });
+  await expect(gin.getByText("Requires review")).toBeVisible();
+  // Physical usage: 1,875 + 9,000 - 10,575 = 300 mL. Served: 5 Negronis x 30 mL = 150 mL. Unexplained +150 mL.
+  await expect(gin.getByText(/Unexplained: \+150 mL \(100\.0% of accounted usage\)/)).toBeVisible();
+  await gin.getByText("How this was calculated").click();
+  await expect(gin.getByText("300 mL")).toBeVisible();
+  const insightsText = (await page.locator("main").innerText()).toLowerCase();
+  expect(insightsText).not.toMatch(/theft|thief|steal|stole|fraud/);
+  await shot(page, "09-insights");
+  await expectNoHorizontalScroll(page);
+  await page.getByRole("button", { name: "Explain with AI" }).click();
+  await expect(page.getByText(/Development stub \(no AI provider\)/)).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText(/Written by the development stub/)).toBeVisible();
+
+  // ---------- bar book handoff acknowledged by staff ----------
+  await page.goto("/barbook");
+  await page.getByText("Write an entry").click();
+  await page.getByLabel("Title").fill("Campari low for the weekend");
+  await page.getByLabel("Details").fill("One bottle left after Friday. Order placed.");
+  await page.getByLabel("Category").selectOption("shortage");
+  await page.getByLabel("Ask everyone to acknowledge").check();
+  await page.getByRole("button", { name: "Post" }).click();
+  await page.waitForURL(/barbook\/[0-9a-f-]{36}\?saved=1/);
+  await staff.goto("/today");
+  await staff.getByRole("link", { name: "Campari low for the weekend" }).click();
+  await staff.getByRole("button", { name: "I've read this" }).click();
+  await expect(staff.getByText("Acknowledged by 1")).toBeVisible();
+  await shot(staff, "10-barbook-ack-staff");
+  await expectNoHorizontalScroll(staff);
+
+  // ---------- schedule: overnight shift published and seen by staff ----------
+  await page.goto("/schedule");
+  await page.getByLabel("Name", { exact: true }).fill("Sam Staff");
+  await page.getByLabel("Linked account (optional)").selectOption({ index: 2 });
+  await page.getByRole("button", { name: "Add staff" }).click();
+  await expectSaved(page, /Staff added/);
+  await page.reload();
+  const todayLabel = await page.getByLabel("Day").locator("option").first().getAttribute("value");
+  await page.getByLabel("Who").selectOption({ label: "Sam Staff" });
+  await page.getByLabel("Start").fill("17:00");
+  await page.getByLabel("End").fill("01:00");
+  await page.getByRole("button", { name: "Add shift" }).click();
+  await expectSaved(page, /runs past midnight/);
+  await page.reload();
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "Publish week" }).click();
+  await expect(page.getByText("Published v1")).toBeVisible();
+  await shot(page, "11-schedule");
+  await expectNoHorizontalScroll(page);
+  await staff.goto(`/schedule?week=${todayLabel}`);
+  await expect(staff.getByText("Your shifts")).toBeVisible();
+  await expect(staff.getByText(/17:00–01:00 \(\+1\)/).first()).toBeVisible();
+  await staff.goto("/notifications");
+  await expect(staff.getByText(/Schedule for week of/)).toBeVisible();
+
+  // Staff role limits.
+  await staff.goto("/insights");
+  await expect(staff.getByText("Not available with your role")).toBeVisible();
+  const recipeUrl = new URL(page.url()).origin + (await (async () => { await page.goto("/recipes?view=all"); return (await page.getByRole("link", { name: /Negroni/ }).first().getAttribute("href"))!; })());
+  await staff.goto(recipeUrl);
+  await expect(staff.getByRole("heading", { name: "Negroni" })).toBeVisible();
+  await expect(staff.getByText("Ingredient cost")).toHaveCount(0);
+
+  // ---------- beverage event ----------
+  await page.goto("/events");
+  await page.getByText("Plan a new event").click();
+  await page.getByLabel("Event name").fill("Rooftop birthday");
+  await page.getByLabel("Guests", { exact: true }).fill("60");
+  await page.getByLabel("Hours", { exact: true }).fill("3");
+  await page.getByLabel("Cocktails %").fill("100");
+  await page.getByLabel("Beer %").fill("0");
+  await page.getByLabel("Wine %").fill("0");
+  await page.getByLabel("Non-alcoholic %").fill("0");
+  await page.getByLabel(/Other costs/).fill("Two bartenders: 320");
+  await page.getByRole("button", { name: "Create event" }).click();
+  await page.waitForURL(/events\/[0-9a-f-]{36}\?saved=1/);
+  await page.getByLabel("Recipe").selectOption({ label: "Negroni" });
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expectSaved(page, /Saved/);
+  await page.reload();
+  // 60 x 85% x (2 + 1 + 1) = 204 expected; +10% contingency = 225 (rounded up from 224.4).
+  await expect(page.getByText("225 drinks")).toBeVisible();
+  await expect(page.getByText("225 servings")).toBeVisible();
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "Save quote snapshot" }).click();
+  await expectSaved(page, /Quote v1 saved/);
+  await shot(page, "12-event");
+  await expectNoHorizontalScroll(page);
+  const csv = await page.request.get(`${new URL(page.url()).pathname}/export`);
+  expect(csv.status()).toBe(200);
+  expect(await csv.text()).toContain("Beefeater Gin");
+
+  // ---------- export ----------
+  const res = await page.request.get("/api/export");
+  expect(res.status()).toBe(200);
+  const dump = await res.json();
+  expect(dump.format).toBe("table-zero-bar-export");
+  expect(dump.tables.sales_lines).toHaveLength(5);
+  expect(dump.tables.invoices.length).toBeGreaterThanOrEqual(1);
+  expect(dump.tables.audit_events.length).toBeGreaterThan(5);
+  expect(JSON.stringify(dump)).not.toContain("Alex Example");
+  const staffExport = await staff.request.get("/api/export");
+  expect(staffExport.status()).toBe(403);
 });
+
+async function acceptInvite(browser: Browser, email: string, invitePath: string): Promise<Page> {
+  const ctx = await browser.newContext({ viewport: { width: 360, height: 780 }, baseURL: test.info().project.use.baseURL });
+  const p = await ctx.newPage();
+  await p.goto(`/sign-up?next=${encodeURIComponent(invitePath)}`);
+  await p.getByLabel("Email").fill(email);
+  await p.getByLabel("Password").fill(PASSWORD);
+  await p.getByRole("button", { name: "Create account" }).click();
+  await p.waitForURL(new RegExp(invitePath));
+  await p.getByLabel(/Your name/).fill("Sam Staff");
+  await p.getByRole("button", { name: "Accept invitation" }).click();
+  await p.waitForURL(/today/);
+  return p;
+}

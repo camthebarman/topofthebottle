@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { UNITS } from "@tz/domain";
 import { Card, PageHeader } from "@/components/ui";
 import { num } from "@/lib/format";
-import { getContext, requirePerm } from "@/lib/session";
+import { getContext, pagePerm } from "@/lib/session";
 import { loadCatalog } from "@/server/catalog";
 import { MovementForm, ProductionForm, TransferForm } from "../forms";
 import { unitOptions } from "../units";
@@ -12,7 +12,7 @@ export const metadata = { title: "Record stock changes" };
 export default async function RecordPage({ searchParams }: { searchParams: Promise<{ type?: string }> }) {
   const sp = await searchParams;
   const app = await getContext();
-  requirePerm(app, "inventory.move");
+  pagePerm(app, "inventory.move");
   const cat = await loadCatalog(app);
   const products = cat.products.filter((p) => !p.archived_at).map((p) => ({ id: p.id, name: p.name, dimension: p.dimension, containerLabel: p.container_size_base ? p.container_label ?? "container" : null }));
   const preps = cat.recipes

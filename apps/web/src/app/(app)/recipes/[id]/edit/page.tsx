@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { Card, PageHeader } from "@/components/ui";
-import { getContext, requirePerm } from "@/lib/session";
+import { getContext, pagePerm } from "@/lib/session";
 import { loadCatalog } from "@/server/catalog";
 import { RecipeEditor } from "../../editor";
 import { editorOptions } from "../../editor-data";
@@ -9,7 +9,7 @@ export default async function EditRecipePage({ params }: { params: Promise<{ id:
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const app = await getContext();
-  requirePerm(app, "recipes.edit");
+  pagePerm(app, "recipes.edit");
   const cat = await loadCatalog(app, { includeArchived: true });
   const recipe = cat.recipeById.get(id);
   if (!recipe) notFound();

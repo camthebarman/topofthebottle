@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { BottomNav, SideNav } from "@/components/shell/nav";
 import { buttonClass } from "@/components/ui";
 import { getContext } from "@/lib/session";
@@ -7,6 +8,9 @@ import { switchContext } from "./context-actions";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const ctx = await getContext();
+  // Anyone who has enrolled a second factor must use it for this session.
+  const { data: aal } = await ctx.supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (aal?.nextLevel === "aal2" && aal.currentLevel !== "aal2") redirect("/mfa");
   const { count } = await ctx.supabase.from("notifications").select("id", { count: "exact", head: true }).is("read_at", null).eq("org_id", ctx.org.orgId);
   const options: { value: string; label: string }[] = [];
   for (const m of ctx.memberships) {
@@ -43,6 +47,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </form>
           </div>
         </header>
+        {ctx.entitlement === "read_only" ? <p role="status" className="mb-3 rounded-lg border border-warn/50 bg-warn/10 p-2 text-sm">Subscription ended: read-only. <Link className="underline" href="/settings/billing">Billing</Link> · <Link className="underline" href="/settings/data">Export data</Link></p> : null}
+        {ctx.entitlement === "grace" ? <p role="status" className="mb-3 rounded-lg border border-warn/50 bg-warn/10 p-2 text-sm">Payment needs attention. <Link className="underline" href="/settings/billing">Billing</Link></p> : null}
         <main id="main">{children}</main>
       </div>
       <BottomNav />

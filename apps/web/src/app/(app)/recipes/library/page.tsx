@@ -1,6 +1,6 @@
 import { Card, PageHeader } from "@/components/ui";
 import { must } from "@/lib/action";
-import { getContext, requirePerm } from "@/lib/session";
+import { getContext, pagePerm } from "@/lib/session";
 import { CopyTemplateButton } from "./copy-button";
 
 export const metadata = { title: "Classic recipes" };
@@ -19,7 +19,7 @@ interface Template {
 
 export default async function LibraryPage() {
   const app = await getContext();
-  requirePerm(app, "recipes.edit");
+  pagePerm(app, "recipes.edit");
   const templates = must(await app.supabase.from("recipe_templates").select("*").order("kind").order("name")) as Template[];
   return (
     <>

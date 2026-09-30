@@ -3,7 +3,7 @@ import { PRESETS } from "@tz/domain";
 import { Badge, Card, DataList, Notice, PageHeader } from "@/components/ui";
 import { must } from "@/lib/action";
 import { dateLabel, money, num } from "@/lib/format";
-import { getContext, requirePerm } from "@/lib/session";
+import { getContext, pagePerm } from "@/lib/session";
 import { AutoRefresh, CancelImportForm, CommitForm, MapItemForm, MappingForm } from "../forms";
 
 interface Stats {
@@ -37,7 +37,7 @@ export default async function ImportPage({ params }: { params: Promise<{ id: str
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const app = await getContext();
-  requirePerm(app, "imports.manage");
+  pagePerm(app, "imports.manage");
   const { data: imp } = await app.supabase.from("pos_imports").select("*, documents(filename)").eq("id", id).maybeSingle();
   if (!imp) notFound();
   const s = imp.stats as Stats;

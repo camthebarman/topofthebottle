@@ -211,13 +211,13 @@ export async function extractInvoiceJob(ctx: JobContext): Promise<Record<string,
 export async function flagDuplicates(admin: AdminClient, orgId: string, invoiceId: string): Promise<void> {
   const { data: me } = await admin.from("invoices").select("id, supplier_id, invoice_number, invoice_date, total, is_credit_note, documents(sha256)").eq("id", invoiceId).single();
   if (!me) return;
-  const { data: others } = await admin
-    .from("invoices")
-    .select("id, supplier_id, invoice_number, invoice_date, total, is_credit_note, documents(sha256)")
-    .eq("org_id", orgId)
-    .neq("id", invoiceId)
-    .neq("status", "rejected")
-    .limit(5000);
+  const sha = (me.documents as unknown as { sha256: string } | null)?.sha256 ?? null;
+  const cols = "id, supplier_id, invoice_number, invoice_date, total, is_credit_note, documents(sha256)";
+  const [bySupplier, byFile] = await Promise.all([
+    me.supplier_id ? admin.from("invoices").select(cols).eq("org_id", orgId).eq("supplier_id", me.supplier_id).neq("id", invoiceId).neq("status", "rejected").limit(1000) : Promise.resolve({ data: [] }),
+    sha ? admin.from("invoices").select(`${cols.replace("documents(sha256)", "documents!inner(sha256)")}`).eq("org_id", orgId).eq("documents.sha256", sha).neq("id", invoiceId).neq("status", "rejected").limit(50) : Promise.resolve({ data: [] }),
+  ]);
+  const others = [...(byFile.data ?? []), ...(bySupplier.data ?? [])];
   const toCand = (x: typeof me) => ({
     id: x.id as string,
     fileSha256: ((x.documents as unknown as { sha256: string } | null)?.sha256 ?? null),
@@ -227,7 +227,7 @@ export async function flagDuplicates(admin: AdminClient, orgId: string, invoiceI
     total: x.total === null ? null : String(x.total),
     isCreditNote: x.is_credit_note as boolean,
   });
-  const matches = findDuplicates(toCand(me), (others ?? []).map(toCand));
+  const matches = findDuplicates(toCand(me), (others as (typeof me)[]).map(toCand));
   await admin.from("invoices").update({ duplicate_of_id: matches[0]?.id ?? null }).eq("id", invoiceId);
 }
 

@@ -51,6 +51,8 @@ export interface AppContext {
   location: LocationSummary;
   perms: Set<string>;
   can: (perm: string) => boolean;
+  /** Subscription state: active, grace, trial_unpaid or read_only. */
+  entitlement: string;
 }
 
 /**
@@ -95,12 +97,27 @@ export const getContext = cache(async (): Promise<AppContext> => {
   if (!locations.length) throw new UserError("You do not have access to any location in this organization.", "forbidden");
   const location = locations.find((l) => l.id === prefLoc) ?? locations[0]!;
 
-  const { data: permRows } = await supabase.rpc("my_permissions", { p_org: org.orgId });
+  const [{ data: permRows }, { data: ent }] = await Promise.all([
+    supabase.rpc("my_permissions", { p_org: org.orgId }),
+    supabase.rpc("org_entitlement", { p_org: org.orgId }).maybeSingle(),
+  ]);
   const perms = new Set<string>((permRows ?? []).map((p: { permission: string }) => p.permission));
-  return { supabase, user, memberships, org, locations, location, perms, can: (p) => perms.has(p) };
+  const entitlement = (ent as { state?: string } | null)?.state ?? "trial_unpaid";
+  return { supabase, user, memberships, org, locations, location, perms, can: (p) => perms.has(p), entitlement };
 });
+
+/** Permissions that stay usable after a subscription lapses, so data can be read, exported and billing fixed. */
+const READ_ONLY_ALLOWED = new Set(["org.view", "costs.view", "insights.view", "schedule.view_team", "data.export", "audit.view", "billing.manage", "members.manage"]);
 
 /** Throw unless the active membership has the permission. The database checks again. */
 export function requirePerm(ctx: AppContext, perm: string): void {
   if (!ctx.perms.has(perm)) throw new UserError("You do not have permission to do that.", "forbidden");
+  if (ctx.entitlement === "read_only" && !READ_ONLY_ALLOWED.has(perm)) {
+    throw new UserError("The subscription has ended, so this organization is read-only. Your data is still here and can be exported.", "forbidden");
+  }
+}
+
+/** For pages: send members without the permission to a plain explanation instead of an error. */
+export function pagePerm(ctx: AppContext, perm: string): void {
+  if (!ctx.perms.has(perm)) redirect(`/no-access?need=${encodeURIComponent(perm)}`);
 }
