@@ -233,12 +233,14 @@ export type ValuationMethod = "moving_average" | "last_cost";
 export function unitCost(movements: Movement[], method: ValuationMethod, asOf?: string): Decimal | null {
   const cutoff = asOf ? Date.parse(asOf) : Infinity;
   const ordered = [...movements].filter((m) => Date.parse(m.occurredAt) <= cutoff).sort((a, b) => a.occurredAt.localeCompare(b.occurredAt) || a.id.localeCompare(b.id));
+  // A receipt reversed within the window was an error; it moves quantity but never sets price.
+  const reversed = new Set(ordered.filter((m) => m.reversesId).map((m) => m.reversesId!));
   let qty = ZERO;
   let avg: Decimal | null = null;
   let last: Decimal | null = null;
   for (const m of ordered) {
     const priced = (m.type === "receipt" || m.type === "opening_balance") && m.extendedCost != null && !m.qtyBase.isZero();
-    if (priced && !m.reversesId) {
+    if (priced && !m.reversesId && !reversed.has(m.id)) {
       const unit = m.extendedCost!.div(m.qtyBase);
       last = unit;
       const onHand = Decimal.max(qty, ZERO);

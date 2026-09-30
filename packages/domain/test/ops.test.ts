@@ -88,6 +88,15 @@ describe("inventory ledger", () => {
     expect(unitCost(ms, "moving_average", "2026-09-02T00:00:00Z")?.toString()).toBe("0.02");
   });
 
+  it("ignores the price of a receipt that was later reversed", () => {
+    const r1 = m("1", "receipt", "1000", "2026-09-01T00:00:00Z", "20");
+    const bad = m("2", "receipt", "1000", "2026-09-02T00:00:00Z", "90");
+    const rev = reversalOf(bad, "3", "2026-09-03T00:00:00Z", "wrong price, entered twice");
+    expect(unitCost([r1, bad, rev], "moving_average")?.toString()).toBe("0.02");
+    expect(unitCost([r1, bad, rev], "last_cost")?.toString()).toBe("0.02");
+    expect(unitCost([r1, bad, rev], "moving_average", "2026-09-02T12:00:00Z")?.toString()).toBe("0.055");
+  });
+
   it("counts partial bottles and marks estimates as approximate", () => {
     const bottle = { sizeBase: d(750), fullWeightG: d(1250), emptyWeightG: d(500) };
     const tenths = countToBase({ method: "tenths", fullUnits: 2, tenths: 4 }, bottle);

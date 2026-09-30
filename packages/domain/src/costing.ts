@@ -67,6 +67,8 @@ export interface CostingContext {
   /** Generic ingredient id -> stocked product id at this location. */
   ingredientMap: ReadonlyMap<string, string>;
   ingredientNames?: ReadonlyMap<string, string>;
+  /** Product id -> recipe id of the prep that makes it (house syrups, juices, batches). */
+  prepForProduct?: ReadonlyMap<string, string>;
 }
 
 /**
@@ -199,22 +201,29 @@ export function explodeRecipe(
     const here = [...path, recipe.name];
 
     for (const comp of recipe.components) {
+      // A stocked product that is made in house expands into its prep recipe in raw mode.
+      let ref: ComponentRef = comp.ref;
+      if (ref.kind !== "recipe" && mode === "raw") {
+        const pid = ref.kind === "product" ? ref.id : ctx.ingredientMap.get(ref.id);
+        const prepId = pid ? ctx.prepForProduct?.get(pid) : undefined;
+        if (prepId) ref = { kind: "recipe", id: prepId };
+      }
       const qty = safeDecimal(comp.qty);
-      const label = refLabel(ctx, comp.ref);
+      const label = refLabel(ctx, ref);
       if (!qty || qty.lt(0)) {
-        issues.push(issue("invalid_quantity", `${label} in ${recipe.name} has an invalid quantity`, { ref: comp.ref.id, path: here }));
+        issues.push(issue("invalid_quantity", `${label} in ${recipe.name} has an invalid quantity`, { ref: ref.id, path: here }));
         continue;
       }
       if (qty.isZero()) continue;
 
-      if (comp.ref.kind === "recipe") {
-        const sub = ctx.recipes.get(comp.ref.id);
+      if (ref.kind === "recipe") {
+        const sub = ctx.recipes.get(ref.id);
         if (!sub) {
-          issues.push(issue("missing_component", `${label} in ${recipe.name} could not be found`, { ref: comp.ref.id, path: here }));
+          issues.push(issue("missing_component", `${label} in ${recipe.name} could not be found`, { ref: ref.id, path: here }));
           continue;
         }
-        if (nextStack.has(sub.recipeId) || nextStack.has(comp.ref.id)) {
-          issues.push(issue("cycle", `${sub.name} is used inside itself (${[...here, sub.name].join(" → ")})`, { ref: comp.ref.id, path: here }));
+        if (nextStack.has(sub.recipeId) || nextStack.has(ref.id)) {
+          issues.push(issue("cycle", `${sub.name} is used inside itself (${[...here, sub.name].join(" → ")})`, { ref: ref.id, path: here }));
           continue;
         }
         // Batched prep held in stock: consume the prepared product itself.
@@ -239,7 +248,7 @@ export function explodeRecipe(
         let approx = false;
         if (y.dimension === "servings") {
           if (comp.unit !== "each") {
-            issues.push(issue("unit_mismatch", `${sub.name} is measured in servings; use "each"`, { ref: comp.ref.id, path: here }));
+            issues.push(issue("unit_mismatch", `${sub.name} is measured in servings; use "each"`, { ref: ref.id, path: here }));
             continue;
           }
           compBase = qty;
@@ -253,19 +262,19 @@ export function explodeRecipe(
           approx = conv.approximate;
         }
         if (approx) approximate = true;
-        walk(comp.ref.id, multiplier.times(compBase).div(y.base), here, nextStack);
+        walk(ref.id, multiplier.times(compBase).div(y.base), here, nextStack);
         continue;
       }
 
       let productId: string | undefined;
-      if (comp.ref.kind === "ingredient") {
-        productId = ctx.ingredientMap.get(comp.ref.id);
+      if (ref.kind === "ingredient") {
+        productId = ctx.ingredientMap.get(ref.id);
         if (!productId) {
-          issues.push(issue("missing_mapping", `${label} is not mapped to a stocked product`, { ref: comp.ref.id, path: here }));
+          issues.push(issue("missing_mapping", `${label} is not mapped to a stocked product`, { ref: ref.id, path: here }));
           continue;
         }
       } else {
-        productId = comp.ref.id;
+        productId = ref.id;
       }
       const product = ctx.products.get(productId);
       if (!product) {

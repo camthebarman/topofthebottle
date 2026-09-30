@@ -67,6 +67,6 @@ export const zNumberString = z
   .regex(/^-?(\d+\.?\d*|\.\d+)$/, "Enter a number");
 export const zOptionalNumber = z
   .string()
-  .trim()
-  .transform((s) => (s === "" ? null : s))
+  .optional()
+  .transform((s) => (s === undefined || s.trim() === "" ? null : s.trim()))
   .refine((s) => s === null || /^-?(\d+\.?\d*|\.\d+)$/.test(s), "Enter a number");

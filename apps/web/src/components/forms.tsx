@@ -1,7 +1,6 @@
 "use client";
 
-import { type ReactNode, useActionState, useEffect, useRef, useState } from "react";
-import { useFormStatus } from "react-dom";
+import { createContext, type FormEvent, type ReactNode, startTransition, useActionState, useContext, useEffect, useRef, useState } from "react";
 import { buttonClass, cx } from "@/components/ui";
 
 import type { ActionState } from "@/lib/action-state";
@@ -9,8 +8,10 @@ export type { ActionState };
 
 type ActionFn<T> = (state: ActionState<T>, fd: FormData) => Promise<ActionState<T>>;
 
+const PendingContext = createContext(false);
+
 export function SubmitButton({ children, variant = "primary", pendingText = "Saving…", className }: { children: ReactNode; variant?: "primary" | "secondary" | "danger" | "ghost"; pendingText?: string; className?: string }) {
-  const { pending } = useFormStatus();
+  const pending = useContext(PendingContext);
   return (
     <button type="submit" disabled={pending} aria-busy={pending} className={buttonClass(variant, className)}>
       {pending ? pendingText : children}
@@ -62,9 +63,19 @@ export function ActionForm<T>({
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
 
+  // Submitting through a transition (instead of <form action>) keeps what the user typed
+  // when the server reports an error; React would otherwise reset the form.
+  const onSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (pending) return;
+    const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLElement | null;
+    const fd = new FormData(e.currentTarget, submitter && "form" in submitter ? submitter : undefined);
+    startTransition(() => formAction(fd));
+  };
+
   return (
-    <form ref={ref} id={id} action={formAction} onChange={() => setDirty(true)} className={cx("space-y-4", className)} noValidate>
-      {typeof children === "function" ? children(state) : children}
+    <form ref={ref} id={id} onSubmit={onSubmit} onChange={() => setDirty(true)} className={cx("space-y-4", className)} noValidate aria-busy={pending}>
+      <PendingContext.Provider value={pending}>{typeof children === "function" ? children(state) : children}</PendingContext.Provider>
       <div aria-live="polite" className="min-h-5 text-sm">
         {pending ? <span className="text-muted">Saving…</span> : null}
         {!pending && state.status === "error" ? (
@@ -85,7 +96,7 @@ export function fieldErrors(state: ActionState, name: string): string[] | undefi
 
 /** Button that asks for confirmation before submitting its form. */
 export function ConfirmSubmit({ children, message, variant = "danger" }: { children: ReactNode; message: string; variant?: "primary" | "danger" | "secondary" }) {
-  const { pending } = useFormStatus();
+  const pending = useContext(PendingContext);
   return (
     <button
       type="submit"

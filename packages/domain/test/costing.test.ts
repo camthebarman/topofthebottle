@@ -235,3 +235,37 @@ describe("menu metrics", () => {
     expect(r.warnings[0]?.code).toBe("stale_price");
   });
 });
+
+describe("house-made products mapped from generic ingredients", () => {
+  const products = [
+    product({ id: "sugar", dimension: "mass", onHandBase: d(1000), costPerBase: d("0.002") }),
+    product({ id: "water", onHandBase: d(100000), costPerBase: d(0) }),
+    product({ id: "syrup_stock", name: "House simple syrup", onHandBase: d(100), costPerBase: null }),
+    product({ id: "rye", onHandBase: d(600), costPerBase: d("0.05") }),
+  ];
+  const recipes: RecipeVersion[] = [
+    { id: "ss@1", recipeId: "ss", name: "Simple syrup", kind: "prep", producesProductId: "syrup_stock", yield: { qty: 1000, unit: "ml" }, components: [
+      { ref: { kind: "product", id: "sugar" }, qty: 500, unit: "g" },
+      { ref: { kind: "product", id: "water" }, qty: 500, unit: "ml" },
+    ] },
+    drink("of", [
+      { ref: { kind: "ingredient", id: "rye_whiskey" }, qty: 60, unit: "ml" },
+      { ref: { kind: "ingredient", id: "simple_syrup" }, qty: 10, unit: "ml" },
+    ]),
+  ];
+  const c: CostingContext = {
+    ...ctx(products, recipes, { rye_whiskey: "rye", simple_syrup: "syrup_stock" }),
+    prepForProduct: new Map([["syrup_stock", "ss"]]),
+  };
+
+  it("costs a house product through its prep recipe in raw mode", () => {
+    // 60 mL rye at 0.05 = 3.00; 10 mL syrup = 5 g sugar at 0.002 = 0.01
+    expect(costPerServing(c, "of").total?.toString()).toBe("3.01");
+  });
+
+  it("draws the house product from stock in prepared mode", () => {
+    expect(availableServings(c, "of", "prepared").servings).toBe(10);
+    expect(availableServings(c, "of", "raw").servings).toBe(10);
+    expect(costPerServing(c, "of", { mode: "prepared" }).issues[0]?.code).toBe("missing_price");
+  });
+});
