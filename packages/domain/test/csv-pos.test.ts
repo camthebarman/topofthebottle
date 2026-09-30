@@ -167,8 +167,31 @@ describe("POS row normalization", () => {
   });
 
   it("refuses to map sensitive columns", () => {
-    expect(sensitiveHeaders(["Item", "Card Last 4", "Guest Email", "Qty"])).toEqual(["Card Last 4", "Guest Email"]);
+    expect(sensitiveHeaders(["Item", "Card Last 4", "Guest Email", "Qty", "Server", "Employee Name"])).toEqual(["Card Last 4", "Guest Email", "Server", "Employee Name"]);
     const errs = validateProfile({ ...profile, columns: { ...profile.columns, staff_ref: "Customer Name" } }, ["Time", "Check", "Line", "Item", "Qty", "Net", "Void", "Comp", "Mods", "Parent", "Customer Name"]);
     expect(errs.join(" ")).toMatch(/personal or payment/);
+  });
+});
+
+import { guessColumns, suggestPresets } from "../src/pos-presets";
+
+describe("presets", () => {
+  const toastHeaders = ["Location", "Order Id", "Order #", "Sent Date", "Order Date", "Check Id", "Server", "Table", "Item Selection Id", "Item Id", "Master Id", "SKU", "Menu Item", "Sales Category", "Gross Price", "Discnt", "Net Price", "Qty", "Tax", "Void?"];
+  it("suggests the Toast item preset from documented headers and never claims verification", () => {
+    const [p] = suggestPresets(toastHeaders);
+    expect(p?.id).toBe("toast-item-selection");
+    expect(p?.verified).toBe(false);
+  });
+  it("normalizes a Toast-style row including the void flag", () => {
+    const [p] = suggestPresets(toastHeaders);
+    const rec = Object.fromEntries(toastHeaders.map((h) => [h, ""]));
+    Object.assign(rec, { "Order Id": "O1", "Item Selection Id": "S1", "Item Id": "I9", "Menu Item": "Negroni", "Sent Date": "9/14/2026 11:15 PM", Qty: "1", "Gross Price": "14.00", Discnt: "0", "Net Price": "14.00", "Void?": "true", Server: "Alex Example" });
+    const r = normalizeRow(rec, 2, p!, { timeZone: "America/New_York", businessDayCutoff: "04:00" });
+    expect(r.ok && r.sale.kind).toBe("void");
+    expect(r.ok && r.sale.staffRef).toBeNull();
+    expect(JSON.stringify(r)).not.toContain("Alex");
+  });
+  it("guesses columns for an unknown file", () => {
+    expect(guessColumns(["Date", "Item Name", "Quantity", "Net Sales", "Card Number"])).toEqual({ business_date: "Date", item_name: "Item Name", quantity: "Quantity", net_sales: "Net Sales" });
   });
 });

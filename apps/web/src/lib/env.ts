@@ -7,7 +7,7 @@ const schema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(20).optional(),
   APP_URL: z.url().default("http://localhost:3000"),
   ANTHROPIC_API_KEY: z.string().optional(),
-  AI_MODEL: z.string().default("claude-sonnet-5-5"),
+  AI_MODEL: z.string().default("claude-opus-5-5"),
   AI_PROVIDER: z.enum(["", "anthropic", "stub"]).optional(),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),

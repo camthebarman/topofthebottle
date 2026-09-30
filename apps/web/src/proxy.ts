@@ -10,7 +10,7 @@ function csp(nonce: string, supabaseUrl: string): string {
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ""}`,
     `style-src 'self'${dev ? " 'unsafe-inline'" : ` 'nonce-${nonce}'`}`,
     `img-src 'self' blob: data: ${supabaseUrl}`,
-    `frame-src ${supabaseUrl}`,
+    `frame-src 'self' ${supabaseUrl}`,
     "font-src 'self'",
     "connect-src 'self'",
     "object-src 'none'",

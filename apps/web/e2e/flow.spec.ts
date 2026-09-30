@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { expectNoHorizontalScroll, expectSaved, shot, signUp, uniqueEmail } from "./helpers";
+import { expectNoHorizontalScroll, expectSaved, nyLocal, shot, signUp, toastCsv, uniqueEmail } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
 
@@ -72,6 +72,8 @@ test("owner sets up products, recipes, menu and a count", async ({ page }) => {
 
   // Count: 2 bottles + 5 tenths of gin, then finalize.
   await page.goto("/inventory/counts");
+  const day = 86_400_000;
+  await page.getByLabel("Stock as of (optional)").fill(nyLocal(new Date(Date.now() - 2 * day), "10:00"));
   await page.getByRole("button", { name: "Start a count" }).click();
   await page.waitForURL(/inventory\/counts\/[0-9a-f-]{36}/);
   await page.getByPlaceholder("Find a product to count").fill("Beefeater");
@@ -92,4 +94,80 @@ test("owner sets up products, recipes, menu and a count", async ({ page }) => {
   await expect(page.getByText("2.5 bottle").first()).toBeVisible();
   await expectNoHorizontalScroll(page);
   await shot(page, "05-inventory");
+
+  // ---------- invoice: CSV upload, review, approve, receive ----------
+  await page.goto("/inventory/invoices");
+  await expectNoHorizontalScroll(page);
+  await page.getByLabel("PDF, photo or CSV (max 25 MB, 50 pages)").setInputFiles({
+    name: "sgws-invoice.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from("Description,SKU,Qty,Units per case,Unit Price,Total\nBeefeater Gin 12x750ml,BF750,1,12,288.00,288.00\nCampari 6x750ml,CMP750,1,6,180.00,180.00\nLemons case,LEM,1,1,40.00,40.00\n"),
+  });
+  await page.getByRole("button", { name: "Upload" }).click();
+  await page.waitForURL(/inventory\/invoices\/[0-9a-f-]{36}/);
+  await expect(async () => {
+    await page.reload();
+    await expect(page.getByText("Lines (3)")).toBeVisible({ timeout: 2000 });
+  }).toPass({ timeout: 60_000 });
+  await page.getByLabel("New supplier name").fill("Southern Glazer's");
+  await page.getByLabel("Invoice number", { exact: true }).fill("INV-1001");
+  await page.getByLabel("Subtotal", { exact: true }).fill("508.00");
+  await page.getByLabel("Freight", { exact: true }).fill("10.00");
+  await page.getByLabel("Total", { exact: true }).fill("518.00");
+  await page.getByRole("button", { name: "Save details" }).click();
+  await expectSaved(page, /Invoice details saved/);
+  await page.reload();
+  await expect(page.getByText("Lines, subtotal and total agree")).toBeVisible();
+
+  const lineCard = (text: string) => page.locator("li").filter({ has: page.locator(`input[value="${text}"]`) });
+  for (const [desc, product, pack] of [["Beefeater Gin 12x750ml", "Beefeater Gin", "12"], ["Campari 6x750ml", "Campari", "6"]] as const) {
+    const card = lineCard(desc);
+    await card.getByLabel("Product").selectOption({ label: product });
+    await card.getByLabel("Units per pack").fill(pack);
+    await card.getByLabel("Unit size").fill("750");
+    await card.getByLabel("Size unit").selectOption("ml");
+    await card.getByRole("button", { name: "Confirm line" }).click();
+    await expect(card.getByText("Line confirmed")).toBeVisible();
+  }
+  await lineCard("Lemons case").getByRole("button", { name: "Not stock" }).click();
+  await expect(lineCard("Lemons case").getByText("Line saved")).toBeVisible();
+  await page.reload();
+  await shot(page, "06-invoice-review");
+  await expectNoHorizontalScroll(page);
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "Approve invoice" }).click();
+  await expect(page.getByText("Approved. Stock has not changed yet")).toBeVisible();
+  await page.getByLabel("Received at (optional)").fill(nyLocal(new Date(Date.now() - 2 * day), "12:00"));
+  await page.getByRole("button", { name: "Receive into stock" }).click();
+  await expect(page.getByText("Received into stock.")).toBeVisible();
+  await page.goto("/inventory");
+  // 2.5 bottles counted + 12 received
+  await expect(page.getByText("14.5 bottle").first()).toBeVisible();
+
+  // ---------- POS import (Toast item selection format) ----------
+  await page.goto("/imports");
+  await page.getByLabel("CSV export (max 25 MB)").setInputFiles({ name: "ItemSelectionDetails.csv", mimeType: "text/csv", buffer: Buffer.from(toastCsv(new Date(Date.now() - day))) });
+  await page.getByRole("button", { name: "Upload" }).click();
+  await page.waitForURL(/imports\/[0-9a-f-]{36}/);
+  await expect(page.getByLabel("Format", { exact: true })).toHaveValue("toast-item-selection");
+  await expect(page.getByText(/Not imported \(personal or payment data\)/)).toBeVisible();
+  await page.getByRole("button", { name: "Check the file" }).click();
+  await expect(page.getByText("What the file contains")).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText(/Line \d+: quantity "abc" is not a number/)).toBeVisible();
+  const mapNegroni = page.locator("form").filter({ has: page.locator('input[name="itemName"][value="Negroni"]') });
+  await mapNegroni.getByRole("combobox").first().selectOption({ label: "Negroni" });
+  await mapNegroni.getByRole("button", { name: "Map" }).click();
+  await expect(mapNegroni).toHaveCount(0);
+  await shot(page, "07-import-review");
+  await expectNoHorizontalScroll(page);
+  await page.getByLabel(/Import the valid rows/).check();
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "Import sales" }).click();
+  await expect(page.getByText("Import report")).toBeVisible({ timeout: 60_000 });
+  const report = page.locator("section").filter({ hasText: "Import report" });
+  await expect(report.locator("div").filter({ hasText: /^Sales lines added5$/ })).toBeVisible();
+  await expect(page.getByText("Rejected (see below)")).toBeVisible();
+  // Staff names from the Server column are never stored.
+  await expect(page.getByText("Alex Example")).toHaveCount(0);
+  await shot(page, "08-import-report");
 });

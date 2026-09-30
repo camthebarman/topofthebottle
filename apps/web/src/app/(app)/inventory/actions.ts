@@ -6,6 +6,7 @@ import { d, explodeRecipe, toBase, UNITS } from "@tz/domain";
 import { z } from "zod";
 import { action, must, zOptionalNumber, zRequired, zUuid } from "@/lib/action";
 import { fromDbError, UserError } from "@/lib/errors";
+import { localInputToUtc } from "@/lib/local-time";
 import { getContext, requirePerm } from "@/lib/session";
 import { loadCatalog } from "@/server/catalog";
 
@@ -147,10 +148,11 @@ export const addSupplierItem = action(
 
 // ---------- counts ----------
 
-export const startCount = action(z.object({ name: z.string().trim().max(80).optional() }), async ({ name }) => {
+export const startCount = action(z.object({ name: z.string().trim().max(80).optional(), countedAt: z.string().optional() }), async ({ name, countedAt }) => {
   const app = await getContext();
   requirePerm(app, "inventory.count");
-  const row = must(await app.supabase.from("count_sessions").insert({ org_id: app.org.orgId, location_id: app.location.id, name: name || null, started_by: app.user.id, counted_at: new Date().toISOString() }).select("id").single()) as { id: string };
+  const at = localInputToUtc(countedAt, app.location.timezone);
+  const row = must(await app.supabase.from("count_sessions").insert({ org_id: app.org.orgId, location_id: app.location.id, name: name || null, started_by: app.user.id, counted_at: at.toISOString() }).select("id").single()) as { id: string };
   redirect(`/inventory/counts/${row.id}`);
 });
 
@@ -252,8 +254,7 @@ export const recordMovement = action(
     const abs = base.abs();
     const signed = input.type === "manual_adjustment" ? (input.direction === "in" ? abs : abs.negated()) : input.type === "opening_balance" ? abs : abs.negated();
     if (input.type === "manual_adjustment" && !input.reason) throw new UserError("Give a reason for the adjustment.");
-    const occurredAt = input.occurredAt ? new Date(input.occurredAt) : new Date();
-    if (Number.isNaN(occurredAt.getTime())) throw new UserError("Invalid date.");
+    const occurredAt = localInputToUtc(input.occurredAt, app.location.timezone);
     const { error } = await app.supabase.rpc("record_movement", {
       p_org: app.org.orgId,
       p_location: app.location.id,

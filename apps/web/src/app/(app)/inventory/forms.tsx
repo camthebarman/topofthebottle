@@ -181,6 +181,7 @@ export function StartCountForm() {
   return (
     <ActionForm action={startCount}>
       <Field label="Name (optional)" name="name" placeholder="Monday close" />
+      <Field label="Stock as of (optional)" name="countedAt" type="datetime-local" hint="Leave blank for now. Set it when recording a count taken earlier, e.g. last night's close." />
       <SubmitButton>Start a count</SubmitButton>
     </ActionForm>
   );
@@ -297,6 +298,7 @@ export function MovementForm({ products, units, idempotencyKey, defaultType }: {
             </Select>
           ) : null}
           <TextArea label={type === "manual_adjustment" ? "Reason (required)" : "Note"} name="reason" />
+          <Field label="When (optional)" name="occurredAt" type="datetime-local" hint="Blank means now." />
           <p className="text-xs text-muted">Adjustments are shown separately in Insights and do not count as explained usage.</p>
           <SubmitButton>Record</SubmitButton>
         </>

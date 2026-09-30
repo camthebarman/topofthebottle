@@ -111,20 +111,22 @@ const inputClass =
 interface FieldBase {
   label: string;
   name: string;
+  /** Element id; defaults to the name. Set it when a page shows several forms with the same fields. */
+  id?: string;
   hint?: ReactNode;
   errors?: string[];
 }
 
-function FieldShell({ label, name, hint, errors, children }: FieldBase & { children: ReactNode }) {
+function FieldShell({ label, id, hint, errors, children }: { label: string; id: string; hint?: ReactNode; errors?: string[]; children: ReactNode }) {
   return (
     <div className="space-y-1">
-      <label htmlFor={name} className="block text-sm font-medium">
+      <label htmlFor={id} className="block text-sm font-medium">
         {label}
       </label>
       {children}
-      {hint ? <p id={`${name}-hint`} className="text-xs text-muted">{hint}</p> : null}
+      {hint ? <p id={`${id}-hint`} className="text-xs text-muted">{hint}</p> : null}
       {errors?.length ? (
-        <p id={`${name}-error`} className="text-sm text-danger">
+        <p id={`${id}-error`} className="text-sm text-danger">
           {errors.join(" ")}
         </p>
       ) : null}
@@ -136,41 +138,45 @@ function describedBy(name: string, hint?: ReactNode, errors?: string[]) {
   return [hint ? `${name}-hint` : null, errors?.length ? `${name}-error` : null].filter(Boolean).join(" ") || undefined;
 }
 
-export function Field({ label, name, hint, errors, className, ...props }: FieldBase & Omit<ComponentProps<"input">, "name">) {
+export function Field({ label, name, id, hint, errors, className, ...props }: FieldBase & Omit<ComponentProps<"input">, "name" | "id">) {
+  const fid = id ?? name;
   return (
-    <FieldShell label={label} name={name} hint={hint} errors={errors}>
-      <input id={name} name={name} aria-invalid={errors?.length ? true : undefined} aria-describedby={describedBy(name, hint, errors)} className={cx(inputClass, className)} {...props} />
+    <FieldShell label={label} id={fid} hint={hint} errors={errors}>
+      <input id={fid} name={name} aria-invalid={errors?.length ? true : undefined} aria-describedby={describedBy(fid, hint, errors)} className={cx(inputClass, className)} {...props} />
     </FieldShell>
   );
 }
 
-export function TextArea({ label, name, hint, errors, className, ...props }: FieldBase & Omit<ComponentProps<"textarea">, "name">) {
+export function TextArea({ label, name, id, hint, errors, className, ...props }: FieldBase & Omit<ComponentProps<"textarea">, "name" | "id">) {
+  const fid = id ?? name;
   return (
-    <FieldShell label={label} name={name} hint={hint} errors={errors}>
-      <textarea id={name} name={name} aria-invalid={errors?.length ? true : undefined} aria-describedby={describedBy(name, hint, errors)} className={cx(inputClass, "min-h-24", className)} {...props} />
+    <FieldShell label={label} id={fid} hint={hint} errors={errors}>
+      <textarea id={fid} name={name} aria-invalid={errors?.length ? true : undefined} aria-describedby={describedBy(fid, hint, errors)} className={cx(inputClass, "min-h-24", className)} {...props} />
     </FieldShell>
   );
 }
 
-export function Select({ label, name, hint, errors, className, children, ...props }: FieldBase & Omit<ComponentProps<"select">, "name">) {
+export function Select({ label, name, id, hint, errors, className, children, ...props }: FieldBase & Omit<ComponentProps<"select">, "name" | "id">) {
+  const fid = id ?? name;
   return (
-    <FieldShell label={label} name={name} hint={hint} errors={errors}>
-      <select id={name} name={name} aria-invalid={errors?.length ? true : undefined} aria-describedby={describedBy(name, hint, errors)} className={cx(inputClass, className)} {...props}>
+    <FieldShell label={label} id={fid} hint={hint} errors={errors}>
+      <select id={fid} name={name} aria-invalid={errors?.length ? true : undefined} aria-describedby={describedBy(fid, hint, errors)} className={cx(inputClass, className)} {...props}>
         {children}
       </select>
     </FieldShell>
   );
 }
 
-export function Checkbox({ label, name, hint, ...props }: { label: string; name: string; hint?: ReactNode } & Omit<ComponentProps<"input">, "name" | "type">) {
+export function Checkbox({ label, name, id, hint, ...props }: { label: string; name: string; id?: string; hint?: ReactNode } & Omit<ComponentProps<"input">, "name" | "type" | "id">) {
+  const fid = id ?? name;
   return (
     <div className="flex items-start gap-3">
-      <input id={name} name={name} type="checkbox" className="mt-1 size-5 accent-[var(--accent)]" aria-describedby={hint ? `${name}-hint` : undefined} {...props} />
+      <input id={fid} name={name} type="checkbox" className="mt-1 size-5 accent-[var(--accent)]" aria-describedby={hint ? `${fid}-hint` : undefined} {...props} />
       <div>
-        <label htmlFor={name} className="text-sm font-medium">
+        <label htmlFor={fid} className="text-sm font-medium">
           {label}
         </label>
-        {hint ? <p id={`${name}-hint`} className="text-xs text-muted">{hint}</p> : null}
+        {hint ? <p id={`${fid}-hint`} className="text-xs text-muted">{hint}</p> : null}
       </div>
     </div>
   );

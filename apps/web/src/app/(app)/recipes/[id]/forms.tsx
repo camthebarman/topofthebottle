@@ -38,7 +38,7 @@ export function MapIngredientForm({ recipeId, ingredientId, ingredientName, prod
     <ActionForm action={mapIngredient} className="rounded-lg border border-border p-3">
       <input type="hidden" name="ingredientId" value={ingredientId} />
       <input type="hidden" name="recipeId" value={recipeId} />
-      <Select label={`${ingredientName} is stocked as`} name={`productId`} required defaultValue="">
+      <Select label={`${ingredientName} is stocked as`} name="productId" id={`productId-${ingredientId}`} required defaultValue="">
         <option value="" disabled>Choose a product…</option>
         {products.map((p) => (
           <option key={p.id} value={p.id}>{p.name} ({p.dimension})</option>

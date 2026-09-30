@@ -13,6 +13,7 @@
     "worker": "node --experimental-strip-types --conditions=react-server scripts/worker.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.130.0",
     "@supabase/ssr": "0.12.7",
     "@supabase/supabase-js": "2.117.2",
     "@tz/domain": "workspace:*",

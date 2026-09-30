@@ -94,7 +94,7 @@ export interface NormalizedSale {
 export type RowResult = { ok: true; sale: NormalizedSale; warnings: string[] } | { ok: false; reasons: string[] };
 
 /** Headers that suggest personal or payment data. These are never mapped or stored. */
-const SENSITIVE_HEADER = /(card|pan\b|last ?4|cvv|expir|customer|guest|e-?mail|phone|address|birth|dob|loyalty|member)/i;
+const SENSITIVE_HEADER = /(card|pan\b|last ?4|cvv|expir|customer|guest|e-?mail|phone|address|birth|dob|loyalty|member|^server$|server name|employee|staff|bartender|cashier)/i;
 
 export function sensitiveHeaders(headers: string[]): string[] {
   return headers.filter((h) => SENSITIVE_HEADER.test(h));
