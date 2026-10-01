@@ -221,8 +221,8 @@ export async function flagDuplicates(admin: AdminClient, orgId: string, invoiceI
   const sha = (me.documents as unknown as { sha256: string } | null)?.sha256 ?? null;
   const cols = "id, supplier_id, invoice_number, invoice_date, total, is_credit_note, documents(sha256)";
   const [bySupplier, byFile] = await Promise.all([
-    me.supplier_id ? admin.from("invoices").select(cols).eq("org_id", orgId).eq("supplier_id", me.supplier_id).neq("id", invoiceId).neq("status", "rejected").limit(1000) : Promise.resolve({ data: [] }),
-    sha ? admin.from("invoices").select(`${cols.replace("documents(sha256)", "documents!inner(sha256)")}`).eq("org_id", orgId).eq("documents.sha256", sha).neq("id", invoiceId).neq("status", "rejected").limit(50) : Promise.resolve({ data: [] }),
+    me.supplier_id ? admin.from("invoices").select(cols).eq("org_id", orgId).eq("supplier_id", me.supplier_id).neq("id", invoiceId).not("status", "in", "(rejected,reversed)").limit(1000) : Promise.resolve({ data: [] }),
+    sha ? admin.from("invoices").select(`${cols.replace("documents(sha256)", "documents!inner(sha256)")}`).eq("org_id", orgId).eq("documents.sha256", sha).neq("id", invoiceId).not("status", "in", "(rejected,reversed)").limit(50) : Promise.resolve({ data: [] }),
   ]);
   const others = [...(byFile.data ?? []), ...(bySupplier.data ?? [])];
   const toCand = (x: typeof me) => ({

@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { d, fromBase, landedCosts, reconcileInvoice, UNITS } from "@tz/domain";
 import { Badge, Card, DataList, Notice, PageHeader } from "@/components/ui";
@@ -6,9 +7,9 @@ import { must } from "@/lib/action";
 import { dateLabel, money, num } from "@/lib/format";
 import { getContext, pagePerm } from "@/lib/session";
 import { orgSettings } from "@/server/menu";
-import { ApproveForm, HeaderForm, LineForm, ReceiveForm, RejectForm, RetryForm } from "./forms";
+import { ApproveForm, CorrectionForm, HeaderForm, LineForm, ReceiveForm, RejectForm, RetryForm, ReverseInvoiceForm } from "./forms";
 
-export default async function InvoicePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ approved?: string; received?: string }> }) {
+export default async function InvoicePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ approved?: string; received?: string; reversed?: string }> }) {
   const { id } = await params;
   const sp = await searchParams;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
@@ -35,6 +36,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
   const editable = ["uploaded", "needs_review", "extraction_failed"].includes(inv.status);
   const received = new Map<string, number>();
   for (const r of (recRes.data ?? []) as { invoice_line_id: string; received_quantity: string }[]) received.set(r.invoice_line_id, (received.get(r.invoice_line_id) ?? 0) + Number(r.received_quantity));
+  const receiptLines = (recRes.data ?? []).length;
   const unresolved = lines.filter((l) => l.match_status === "unmatched" || l.match_status === "suggested").length;
   const supplier = (must(suppliersRes) as { id: string; name: string }[]).find((s) => s.id === inv.supplier_id);
   const units = Object.values(UNITS).map((u) => ({ id: u.id, label: u.label, dimension: u.dimension }));
@@ -44,7 +46,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
     <>
       <PageHeader
         title={`${supplier?.name ?? inv.supplier_name_raw ?? "Invoice"}${inv.invoice_number ? ` #${inv.invoice_number}` : ""}`}
-        description={<><Badge tone={inv.status === "approved" ? "ok" : inv.status === "rejected" ? "neutral" : "warn"}>{inv.status.replace("_", " ")}</Badge>{inv.status === "approved" ? <> <Badge tone={inv.receiving_status === "received" ? "ok" : "warn"}>{inv.receiving_status.replace("_", " ")}</Badge></> : null}{inv.is_credit_note ? <> <Badge tone="info">credit note</Badge></> : null}</>}
+        description={<><Badge tone={inv.status === "approved" ? "ok" : inv.status === "rejected" || inv.status === "reversed" ? "neutral" : "warn"}>{inv.status.replace("_", " ")}</Badge>{inv.status === "approved" ? <> <Badge tone={inv.receiving_status === "received" ? "ok" : "warn"}>{inv.receiving_status.replace("_", " ")}</Badge></> : null}{inv.is_credit_note ? <> <Badge tone="info">credit note</Badge></> : null}</>}
       />
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
         <div className="space-y-4 lg:sticky lg:top-4 lg:self-start">
@@ -72,6 +74,14 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
         <div className="space-y-4">
           {sp.approved ? <Notice tone="ok" role="status">Approved. Stock has not changed yet: confirm receiving when the goods are checked in.</Notice> : null}
           {sp.received ? <Notice tone="ok" role="status">Received into stock.</Notice> : null}
+          {sp.reversed ? <Notice tone="ok" role="status">Invoice reversed. Its costs no longer apply from now, and any receipts you chose were taken back out of stock.</Notice> : null}
+          {inv.status === "reversed" ? (
+            <Notice tone="warn" title="Reversed">
+              <p>{inv.reversed_at ? dateLabel(inv.reversed_at, app.location.timezone) : ""}{inv.reversal_reason ? ` · ${inv.reversal_reason}` : ""}</p>
+              {app.can("invoices.approve") ? <div className="mt-2"><CorrectionForm invoiceId={id} /></div> : null}
+            </Notice>
+          ) : null}
+          {inv.corrects_invoice_id ? <Notice tone="info">This corrects an earlier invoice. <Link className="underline" href={`/inventory/invoices/${inv.corrects_invoice_id}`}>Open the original</Link></Notice> : null}
           {inv.status === "extracting" ? <Notice tone="info" role="status">Reading the document… Refresh in a moment.</Notice> : null}
           {inv.review_notes ? <Notice tone="neutral">{inv.review_notes}</Notice> : null}
           {dupRes.data ? (
@@ -166,6 +176,9 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
               {inv.status !== "extracting" && doc && doc.mime_type !== "text/csv" ? <RetryForm invoiceId={id} /> : null}
               <RejectForm invoiceId={id} version={inv.version} />
             </div>
+          ) : null}
+          {inv.status === "approved" && app.can("invoices.approve") ? (
+            <ReverseInvoiceForm invoiceId={id} version={inv.version} receivedLines={receiptLines} />
           ) : null}
           {inv.status === "approved" && d(inv.total ?? 0).lt(0) ? <p className="text-sm text-muted">Credit notes change no stock. Record returned goods under Inventory → Record → Return to supplier.</p> : null}
         </div>

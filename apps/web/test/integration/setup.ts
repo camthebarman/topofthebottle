@@ -1,10 +1,11 @@
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-/** Local stack settings from .env.local (created from `supabase status`). */
+/** Local stack settings from apps/web/.env.local (tests run with apps/web as the working directory). */
 export function localEnv(): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const line of readFileSync(new URL("../../.env.local", import.meta.url), "utf8").split("\n")) {
+  for (const line of readFileSync(resolve(process.cwd(), ".env.local"), "utf8").split("\n")) {
     const m = /^([A-Z_]+)=(.*)$/.exec(line.trim());
     if (m) out[m[1]!] = m[2]!;
   }

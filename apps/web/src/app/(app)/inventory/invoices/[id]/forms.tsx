@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ActionForm, ConfirmSubmit, fieldErrors, SubmitButton } from "@/components/forms";
 import { Checkbox, Field, Select, TextArea } from "@/components/ui";
-import { approveInvoice, deleteLine, receiveInvoice, rejectInvoice, retryExtraction, saveHeader, saveLine } from "../actions";
+import { approveInvoice, deleteLine, receiveInvoice, rejectInvoice, retryExtraction, reverseInvoice, saveHeader, saveLine, startCorrection } from "../actions";
 
 interface HeaderInitial {
   supplierId: string;
@@ -167,6 +167,32 @@ export function RetryForm({ invoiceId }: { invoiceId: string }) {
     <ActionForm action={retryExtraction} className="space-y-0">
       <input type="hidden" name="invoiceId" value={invoiceId} />
       <SubmitButton variant="secondary" pendingText="Queuing…">Read again</SubmitButton>
+    </ActionForm>
+  );
+}
+
+export function ReverseInvoiceForm({ invoiceId, version, receivedLines }: { invoiceId: string; version: number; receivedLines: number }) {
+  const [open, setOpen] = useState(false);
+  if (!open) return <button type="button" className="min-h-11 rounded-lg border border-border px-4" onClick={() => setOpen(true)}>Reverse this invoice…</button>;
+  return (
+    <ActionForm action={reverseInvoice} className="space-y-3">
+      <input type="hidden" name="invoiceId" value={invoiceId} />
+      <input type="hidden" name="version" value={version} />
+      <p className="text-sm text-muted">Use this when the invoice was approved by mistake or with wrong figures. Costs it recorded stop applying from now; reports for earlier dates stay as they were. Nothing is deleted.</p>
+      <Field label="Why reverse it?" name="reason" required />
+      {receivedLines ? (
+        <Checkbox label={`Also take the received stock back out (${receivedLines} receipt line${receivedLines === 1 ? "" : "s"})`} name="reverseReceipts" value="1" defaultChecked hint="Leave unticked if the goods really arrived and only the paperwork was wrong." />
+      ) : null}
+      <ConfirmSubmit message="Reverse this invoice? It will be kept in history, marked reversed.">Reverse invoice</ConfirmSubmit>
+    </ActionForm>
+  );
+}
+
+export function CorrectionForm({ invoiceId }: { invoiceId: string }) {
+  return (
+    <ActionForm action={startCorrection}>
+      <input type="hidden" name="invoiceId" value={invoiceId} />
+      <SubmitButton variant="secondary" pendingText="Creating…">Start a corrected invoice</SubmitButton>
     </ActionForm>
   );
 }

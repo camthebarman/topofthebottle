@@ -230,3 +230,23 @@ export const retryExtraction = action(z.object({ invoiceId: zUuid }), async ({ i
   revalidatePath(`/inventory/invoices/${invoiceId}`);
   return { status: "success", message: "Reading again…" };
 });
+
+export const reverseInvoice = action(
+  z.object({ invoiceId: zUuid, version: z.string().regex(/^\d+$/), reason: z.string().trim().min(1, "Give a reason").max(500), reverseReceipts: z.string().optional() }),
+  async (i) => {
+    const app = await getContext();
+    requirePerm(app, "invoices.approve");
+    const { error } = await app.supabase.rpc("reverse_invoice", { p_org: app.org.orgId, p_invoice: i.invoiceId, p_expected_version: Number(i.version), p_reason: i.reason, p_reverse_receipts: i.reverseReceipts === "1" });
+    if (error) throw fromDbError(error);
+    revalidatePath("/inventory");
+    redirect(`/inventory/invoices/${i.invoiceId}?reversed=1`);
+  },
+);
+
+export const startCorrection = action(z.object({ invoiceId: zUuid }), async ({ invoiceId }) => {
+  const app = await getContext();
+  requirePerm(app, "invoices.approve");
+  const { data, error } = await app.supabase.rpc("create_corrected_invoice", { p_org: app.org.orgId, p_invoice: invoiceId });
+  if (error) throw fromDbError(error);
+  redirect(`/inventory/invoices/${data as string}`);
+});

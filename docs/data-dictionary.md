@@ -432,6 +432,9 @@ Classification: Commercial.
 | created_by | uuid | yes |  |
 | created_at | timestamp with time zone | no | now() |
 | updated_at | timestamp with time zone | no | now() |
+| reversed_by | uuid | yes |  |
+| reversed_at | timestamp with time zone | yes |  |
+| reversal_reason | text | yes |  |
 
 ## jobs
 
@@ -729,6 +732,7 @@ Classification: Commercial. Write-protected.
 | source_id | uuid | yes |  |
 | created_by | uuid | yes |  |
 | created_at | timestamp with time zone | no | now() |
+| reversed_at | timestamp with time zone | yes |  |
 
 ## production_runs
 
