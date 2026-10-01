@@ -72,6 +72,25 @@ describe("cross-tenant access through the API", () => {
   });
 });
 
+describe("security-definer aggregates enforce their own checks", () => {
+  it("sales_summary returns nothing to another tenant or a role without Insights", async () => {
+    const args = { p_org: ids.org, p_location: ids.loc, p_from: "2000-01-01T00:00:00Z", p_to: "2100-01-01T00:00:00Z", p_from_date: "2000-01-01", p_to_date: "2100-01-01" };
+    const { data: owner } = await admin().from("sales_lines").select("id").eq("org_id", ids.org).limit(1);
+    if (!owner?.length) {
+      const { data: imp } = await admin().from("pos_imports").select("id").limit(1).maybeSingle();
+      if (!imp) return; // nothing imported in this database; covered by the perf run
+    }
+    const mine = await (await as("owner@demo.test")).rpc("sales_summary", args);
+    expect(mine.error).toBeNull();
+    const other = await (await as("other-org@demo.test")).rpc("sales_summary", args);
+    expect(other.data).toEqual([]);
+    const bartender = await (await as("bartender@demo.test")).rpc("sales_summary", args);
+    expect(bartender.data).toEqual([]);
+    const vc = await (await as("other-org@demo.test")).rpc("void_comp_by_hour", { p_org: ids.org, p_location: ids.loc, p_from: args.p_from, p_to: args.p_to, p_tz: "UTC" });
+    expect(vc.data).toEqual([]);
+  });
+});
+
 describe("roles through the API", () => {
   it("bartenders cannot see costs or finalize counts", async () => {
     const b = await as("bartender@demo.test");

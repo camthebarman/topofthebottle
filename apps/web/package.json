@@ -11,7 +11,8 @@
     "test": "vitest run test/unit",
     "test:e2e": "playwright test",
     "worker": "tsx --conditions=react-server --env-file=.env.local scripts/worker.ts",
-    "test:integration": "vitest run test/integration"
+    "test:integration": "vitest run test/integration",
+    "test:perf": "vitest run test/perf"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.130.0",

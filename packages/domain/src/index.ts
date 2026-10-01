@@ -12,3 +12,4 @@ export * from "./variance";
 export * from "./catering";
 export * from "./invoice";
 export * from "./pos-presets";
+export * from "./legacy";
