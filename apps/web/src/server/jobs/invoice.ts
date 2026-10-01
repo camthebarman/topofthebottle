@@ -4,7 +4,9 @@ import { AiRefusedError, AiUnavailableError, aiMode, extractInvoice, type Invoic
 import type { AdminClient } from "@/lib/supabase/admin";
 import { type JobContext, type JobRow, PermanentJobError } from "./queue";
 
-/** Read a CSV invoice without AI: one line item per row. */
+const MAX_CSV_LINES = 200;
+
+/** Read a CSV invoice without AI: one line item per row. Rows it cannot read are reported, never dropped silently. */
 export function csvInvoice(text: string): InvoiceCandidate {
   const rows = parseCsv(text, detectDelimiter(text.slice(0, 20000)));
   const [header, ...body] = rows;
@@ -23,9 +25,10 @@ export function csvInvoice(text: string): InvoiceCandidate {
     const v = parseNumber(s);
     return v === null ? null : v.toFixed();
   };
-  const lines = body
-    .filter((r) => cell(r, iDesc) && num(cell(r, iQty)) !== null)
-    .slice(0, 200)
+  const readable = body.filter((r) => cell(r, iDesc) && num(cell(r, iQty)) !== null);
+  const unreadable = body.filter((r) => r.some((c) => c.trim()) && !(cell(r, iDesc) && num(cell(r, iQty)) !== null)).length;
+  const lines = readable
+    .slice(0, MAX_CSV_LINES)
     .map((r) => ({
       description: cell(r, iDesc).slice(0, 500),
       supplier_sku: cell(r, iSku) || null,
@@ -40,7 +43,11 @@ export function csvInvoice(text: string): InvoiceCandidate {
       deposit_per_pack: null,
       confidence: "high" as const,
     }));
-  return { supplier_name: null, invoice_number: null, invoice_date: null, due_date: null, is_credit_note: false, currency: "USD", subtotal: null, freight: null, deposits: null, tax: null, discount: null, total: null, lines, notes: "Read from CSV columns. Header fields are not in the file; enter them." };
+  return { supplier_name: null, invoice_number: null, invoice_date: null, due_date: null, is_credit_note: false, currency: "USD", subtotal: null, freight: null, deposits: null, tax: null, discount: null, total: null, lines, notes: [
+    "Read from CSV columns. Header fields are not in the file; enter them.",
+    unreadable ? `${unreadable} row(s) had no description or no readable quantity and were not read (totals or blank lines are expected here; check the file for anything else).` : "",
+    readable.length > MAX_CSV_LINES ? `Only the first ${MAX_CSV_LINES} of ${readable.length} lines were read. Split the file and upload the rest as a second invoice.` : "",
+  ].filter(Boolean).join(" ") };
 }
 
 function tokens(s: string): Set<string> {

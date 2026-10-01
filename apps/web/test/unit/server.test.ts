@@ -66,6 +66,14 @@ describe("CSV invoices", () => {
     expect(c.supplier_name).toBeNull();
     expect(c.total).toBeNull();
   });
+
+  it("reports rows it could not read and lines beyond the limit instead of dropping them silently", () => {
+    const body = Array.from({ length: 205 }, (_, i) => `Item ${i},1,2.00,2.00`).join("\n");
+    const c = csvInvoice(`Description,Qty,Unit Price,Total\n${body}\nInvoice total,,,410.00\nLime,two,1,1\n`);
+    expect(c.lines).toHaveLength(200);
+    expect(c.notes).toMatch(/2 row\(s\) had no description or no readable quantity/);
+    expect(c.notes).toMatch(/Only the first 200 of 205 lines were read/);
+  });
 });
 
 describe("AI explanation vetting", () => {
