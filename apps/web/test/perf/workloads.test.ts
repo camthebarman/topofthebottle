@@ -1,11 +1,13 @@
 /**
- * Representative workloads against the local stack. Results are printed and
- * recorded by hand in docs/performance.md with the environment they ran on.
+ * Representative workloads against the local stack. Results are written to
+ * test-results/perf.json (with the environment) and summarized in docs/performance.md.
  * Run: pnpm test:perf  (needs `supabase db reset` seed loaded)
  */
 import { randomUUID } from "node:crypto";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { cpus, totalmem } from "node:os";
 import { d, theoreticalUsage, type NormalizedSale } from "@tz/domain";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { admin, as, demoIds, localEnv } from "../integration/setup";
 
 let ids: Awaited<ReturnType<typeof demoIds>>;
@@ -15,6 +17,12 @@ beforeAll(async () => {
   const e = localEnv();
   Object.assign(process.env, { NEXT_PUBLIC_SUPABASE_URL: e.NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY: e.NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY: e.SUPABASE_SERVICE_ROLE_KEY });
   ids = await demoIds();
+});
+
+afterAll(() => {
+  mkdirSync("test-results", { recursive: true });
+  const env = { at: new Date().toISOString(), cpu: cpus()[0]?.model, cores: cpus().length, memGb: Math.round(totalmem() / 2 ** 30), node: process.version };
+  writeFileSync("test-results/perf.json", JSON.stringify({ env, results }, null, 2));
 });
 
 async function ensureDocument(kind: "pos_export", body: string) {

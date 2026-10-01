@@ -1,0 +1,29 @@
+{
+  "env": {
+    "at": "2026-10-01T02:30:38.214Z",
+    "cpu": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+    "cores": 4,
+    "memGb": 16,
+    "node": "v22.22.2"
+  },
+  "results": {
+    "import50k": {
+      "rows": 50000,
+      "bytes": 6199464,
+      "validateMs": 7839,
+      "commitMs": 2253
+    },
+    "sales100k": {
+      "salesLines": 250000,
+      "groups": 616,
+      "quantityCovered": 250000,
+      "summaryMs": 498,
+      "usageMs": 4
+    },
+    "concurrency": {
+      "parallelWrites": 36,
+      "ms": 102,
+      "finalizeWinners": 1
+    }
+  }
+}
