@@ -23,7 +23,7 @@ const MOVEMENT_LABEL: Record<string, string> = {
   manual_adjustment: "Adjustment",
 };
 
-export default async function ProductPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ saved?: string }> }) {
+export default async function ProductPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ saved?: string; reversed?: string }> }) {
   const { id } = await params;
   const sp = await searchParams;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
@@ -53,6 +53,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
       <PageHeader title={product.name} description={`${product.category} · measured by ${dim}`} />
       <div className="space-y-4">
         {sp.saved ? <Notice tone="ok" role="status">Product saved.</Notice> : null}
+        {sp.reversed ? <Notice tone="ok" role="status">Entry reversed. The original stays in the history, marked reversed.</Notice> : null}
         <Card title={`Stock at ${app.location.name}`}>
           <DataList
             items={[

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ComponentProps, ReactNode } from "react";
+import { useId, type ComponentProps, type ReactNode } from "react";
 
 export function cx(...parts: (string | false | null | undefined)[]): string {
   return parts.filter(Boolean).join(" ");
@@ -139,7 +139,8 @@ function describedBy(name: string, hint?: ReactNode, errors?: string[]) {
 }
 
 export function Field({ label, name, id, hint, errors, className, ...props }: FieldBase & Omit<ComponentProps<"input">, "name" | "id">) {
-  const fid = id ?? name;
+  const auto = useId();
+  const fid = id ?? `${name}${auto}`;
   return (
     <FieldShell label={label} id={fid} hint={hint} errors={errors}>
       <input id={fid} name={name} aria-invalid={errors?.length ? true : undefined} aria-describedby={describedBy(fid, hint, errors)} className={cx(inputClass, className)} {...props} />
@@ -148,7 +149,8 @@ export function Field({ label, name, id, hint, errors, className, ...props }: Fi
 }
 
 export function TextArea({ label, name, id, hint, errors, className, ...props }: FieldBase & Omit<ComponentProps<"textarea">, "name" | "id">) {
-  const fid = id ?? name;
+  const auto = useId();
+  const fid = id ?? `${name}${auto}`;
   return (
     <FieldShell label={label} id={fid} hint={hint} errors={errors}>
       <textarea id={fid} name={name} aria-invalid={errors?.length ? true : undefined} aria-describedby={describedBy(fid, hint, errors)} className={cx(inputClass, "min-h-24", className)} {...props} />
@@ -157,7 +159,8 @@ export function TextArea({ label, name, id, hint, errors, className, ...props }:
 }
 
 export function Select({ label, name, id, hint, errors, className, children, ...props }: FieldBase & Omit<ComponentProps<"select">, "name" | "id">) {
-  const fid = id ?? name;
+  const auto = useId();
+  const fid = id ?? `${name}${auto}`;
   return (
     <FieldShell label={label} id={fid} hint={hint} errors={errors}>
       <select id={fid} name={name} aria-invalid={errors?.length ? true : undefined} aria-describedby={describedBy(fid, hint, errors)} className={cx(inputClass, className)} {...props}>
@@ -168,7 +171,8 @@ export function Select({ label, name, id, hint, errors, className, children, ...
 }
 
 export function Checkbox({ label, name, id, hint, ...props }: { label: string; name: string; id?: string; hint?: ReactNode } & Omit<ComponentProps<"input">, "name" | "type" | "id">) {
-  const fid = id ?? name;
+  const auto = useId();
+  const fid = id ?? `${name}${auto}`;
   return (
     <div className="flex items-start gap-3">
       <input id={fid} name={name} type="checkbox" className="mt-1 size-5 accent-[var(--accent)]" aria-describedby={hint ? `${fid}-hint` : undefined} {...props} />

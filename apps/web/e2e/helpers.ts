@@ -22,6 +22,13 @@ export async function signIn(page: Page, email: string, next?: string): Promise<
 
 /** No page-level horizontal scrolling at phone widths. */
 export async function expectNoHorizontalScroll(page: Page): Promise<void> {
+  // Duplicate ids break label association for screen readers; check on every page we visit.
+  const dupes = await page.evaluate(() => {
+    const seen = new Map<string, number>();
+    for (const el of document.querySelectorAll("[id]")) seen.set(el.id, (seen.get(el.id) ?? 0) + 1);
+    return [...seen].filter(([, n]) => n > 1).map(([id]) => id);
+  });
+  expect(dupes, `duplicate ids on ${page.url()}`).toEqual([]);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow, `page ${page.url()} scrolls horizontally by ${overflow}px`).toBeLessThanOrEqual(1);
 }

@@ -277,7 +277,11 @@ export const reverseMovement = action(z.object({ movementId: zUuid, reason: zReq
   const { error } = await app.supabase.rpc("reverse_movement", { p_org: app.org.orgId, p_movement: movementId, p_reason: reason });
   if (error) throw fromDbError(error);
   revalidatePath("/inventory/history");
-  if (productId) revalidatePath(`/inventory/products/${productId}`);
+  if (productId) {
+    revalidatePath(`/inventory/products/${productId}`);
+    // The form disappears once the entry is reversed, so confirm on the page itself.
+    redirect(`/inventory/products/${productId}?reversed=1`);
+  }
   return { status: "success", message: "Reversed. The original entry is kept." };
 });
 

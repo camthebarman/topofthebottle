@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm --filter web lint
+      - run: bash scripts/check-migrations.sh
+      - run: pnpm --filter @tz/domain test
+      - run: pnpm --filter web test
+      - name: Dependency audit (high and critical)
+        run: pnpm audit --prod --audit-level high
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  database-and-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec supabase start
+      - run: bash scripts/write-local-env.sh
+      - name: pgTAP (tenancy and RLS)
+        run: pnpm exec supabase test db
+      - name: Integration tests (cross-tenant isolation, Stripe webhook)
+        run: pnpm --filter web test:integration
+      - name: Backup and restore drill
+        run: bash scripts/backup-restore-check.sh
+      - run: pnpm --filter web exec playwright install --with-deps chromium
+      - name: End-to-end at phone width (production build)
+        run: pnpm --filter web test:e2e
+        env:
+          SCREENSHOT_DIR: ${{ runner.temp }}/screenshots
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-evidence
+          path: |
+            ${{ runner.temp }}/screenshots
+            apps/web/test-results
+          if-no-files-found: ignore
