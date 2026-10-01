@@ -1,16 +1,12 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { expectNoHorizontalScroll, expectSaved, shot } from "./helpers";
+import { expectNoHorizontalScroll, expectSaved, shot, signInSeeded } from "./helpers";
 
 // Flows not covered by the main journey, run against the seeded demo organization.
 async function signedIn(browser: Browser, email: string): Promise<Page> {
   const ctx = await browser.newContext({ viewport: test.info().project.use.viewport, baseURL: test.info().project.use.baseURL });
   const p = await ctx.newPage();
   p.on("dialog", (d) => void d.accept());
-  await p.goto("/sign-in");
-  await p.getByLabel("Email").first().fill(email);
-  await p.getByLabel("Password").fill("demo-password-123");
-  await p.getByRole("button", { name: "Sign in", exact: true }).click();
-  await p.waitForURL(/today/);
+  await signInSeeded(p, email);
   return p;
 }
 

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import { admin, as, demoIds } from "../test/integration/setup";
-import { expectNoHorizontalScroll, shot } from "./helpers";
+import { expectNoHorizontalScroll, shot, signInSeeded } from "./helpers";
 
 test("reverse an approved, received invoice and start a correction", async ({ page }) => {
   page.on("dialog", (d) => void d.accept());
@@ -15,11 +15,7 @@ test("reverse an approved, received invoice and start a correction", async ({ pa
   expect((await owner.rpc("approve_invoice", { p_org: ids.org, p_invoice: inv!.id, p_expected_version: inv!.version, p_line_costs: [{ invoice_line_id: line!.id, product_id: ids.product, cost_per_base: "0.04" }], p_update_costs: true })).error).toBeNull();
   expect((await owner.rpc("receive_invoice", { p_org: ids.org, p_invoice: inv!.id, p_received_at: new Date().toISOString(), p_lines: [{ invoice_line_id: line!.id, received_quantity: 1, received_base: 4500, extended_cost: 180 }], p_notes: null, p_idempotency_key: randomUUID() })).error).toBeNull();
 
-  await page.goto("/sign-in");
-  await page.getByLabel("Email").first().fill("owner@demo.test");
-  await page.getByLabel("Password").fill("demo-password-123");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.waitForURL(/today/);
+  await signInSeeded(page, "owner@demo.test");
 
   await page.goto(`/inventory/invoices/${inv!.id}`);
   await page.getByRole("button", { name: "Reverse this invoice…" }).click();

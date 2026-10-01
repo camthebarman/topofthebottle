@@ -1,13 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { expectNoHorizontalScroll, shot } from "./helpers";
+import { expectNoHorizontalScroll, shot, signInSeeded } from "./helpers";
 
 // Uses the seeded demo owner (supabase/seed.sql).
 test("legacy import lists everything it does not import", async ({ page }) => {
-  await page.goto("/sign-in");
-  await page.getByLabel("Email").first().fill("owner@demo.test");
-  await page.getByLabel("Password").fill("demo-password-123");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.waitForURL(/today/);
+  await signInSeeded(page, "owner@demo.test");
   const tag = Date.now().toString(36);
   const state = {
     ingredients: [

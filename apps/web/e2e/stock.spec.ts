@@ -1,19 +1,12 @@
-import { expect, test, type Page } from "@playwright/test";
-import { expectNoHorizontalScroll, expectSaved, shot } from "./helpers";
+import { expect, test } from "@playwright/test";
+import { expectNoHorizontalScroll, expectSaved, shot, signInSeeded } from "./helpers";
 
 
 // Uses the seeded demo organization (supabase/seed.sql): two locations, a Simple syrup prep, opening stock.
-async function signInDemo(page: Page, email: string): Promise<void> {
-  await page.goto("/sign-in");
-  await page.getByLabel("Email").first().fill(email);
-  await page.getByLabel("Password").fill("demo-password-123");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.waitForURL(/today/);
-}
 
 test("waste, reversal, batch production and transfer between locations", async ({ page }) => {
   page.on("dialog", (d) => void d.accept());
-  await signInDemo(page, "owner@demo.test");
+  await signInSeeded(page, "owner@demo.test");
 
   // Link the Simple syrup prep to its stocked product so it can be batched.
   await page.goto("/recipes?view=all&kind=prep&q=Simple");
@@ -65,8 +58,8 @@ test("waste, reversal, batch production and transfer between locations", async (
 test("two people editing the same product: the second save is refused, not silently overwritten", async ({ browser }) => {
   const a = await browser.newPage();
   const b = await browser.newPage();
-  await signInDemo(a, "owner@demo.test");
-  await signInDemo(b, "manager@demo.test");
+  await signInSeeded(a, "owner@demo.test");
+  await signInSeeded(b, "manager@demo.test");
   await a.goto("/inventory/products");
   await a.getByRole("link", { name: /Campari/ }).first().click();
   await a.waitForURL(/\/inventory\/products\/[0-9a-f-]{36}/);

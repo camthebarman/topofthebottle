@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { type Cookie, expect, type Page, test } from "@playwright/test";
 
 export const PASSWORD = "correct horse battery staple";
 
@@ -74,4 +74,24 @@ export function toastCsv(day: Date): string {
     row("5", "9:45 PM", "abc", "14.00", "false"),
     row("6", "10:15 PM", "1", "14.00", "false"),
   ].join("\r\n");
+}
+
+// Sessions for seeded accounts (supabase/seed.sql), reused across tests in this worker.
+// Signing in afresh for every test would trip the app's own sign-in rate limit, which is
+// working as intended; real users do not sign in nine times a minute.
+const seededSessions = new Map<string, Cookie[]>();
+
+export async function signInSeeded(page: Page, email: string): Promise<void> {
+  const cached = seededSessions.get(email);
+  if (cached) {
+    await page.context().addCookies(cached);
+    await page.goto("/today");
+    if (new URL(page.url()).pathname === "/today") return;
+  }
+  await page.goto("/sign-in");
+  await page.getByLabel("Email").first().fill(email);
+  await page.getByLabel("Password").fill("demo-password-123");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.waitForURL(/today/);
+  seededSessions.set(email, (await page.context().cookies()).filter((c) => c.name.startsWith("sb-")));
 }
