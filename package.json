@@ -2,7 +2,9 @@
   "name": "table-zero-bar",
   "private": true,
   "packageManager": "pnpm@10.33.0",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "pnpm --filter web dev",
     "build": "pnpm -r build",
@@ -14,6 +16,7 @@
     "db:reset": "supabase db reset"
   },
   "devDependencies": {
+    "marked": "^16.4.2",
     "supabase": "2.118.0",
     "typescript": "5.9.3"
   }

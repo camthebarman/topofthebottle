@@ -28,6 +28,8 @@ jobs:
       - run: bash scripts/check-migrations.sh
       - run: pnpm --filter @tz/domain test
       - run: pnpm --filter web test
+      - name: Docs site builds with no broken links
+        run: node scripts/build-docs-site.mjs
       - name: Dependency audit (high and critical)
         run: pnpm audit --prod --audit-level high
       - name: Secret scan
