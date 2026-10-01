@@ -2,11 +2,13 @@ name: Docs site
 
 # Publishes docs/ as a static site on GitHub Pages. Documentation and screenshots only:
 # the application itself is never hosted on github.io (see docs/source-audit.md, D7).
-# Deploys only from main. Requires Settings → Pages → Source: "GitHub Actions".
+# Deploys from main and from the working branch the owner pointed Pages at.
+# Requires Settings → Pages → Source: "GitHub Actions" (otherwise GitHub's default
+# Jekyll build of the branch is what gets served).
 
 on:
   push:
-    branches: [main]
+    branches: [main, claude/bar-ops-platform]
     paths: ["docs/**", "scripts/build-docs-site.mjs", "scripts/docs-site.css", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
@@ -35,7 +37,7 @@ jobs:
 
   deploy:
     needs: build
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/bar-ops-platform'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

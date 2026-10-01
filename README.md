@@ -55,7 +55,7 @@ CI (`.github/workflows/ci.yml`) runs all of these plus dependency audit and secr
 | Operations | `docs/runbooks/`, `docs/performance.md`, `docs/cost-model.md` |
 | Imports | `docs/import-templates.md`, `docs/import-templates/` |
 | Screens at 360 px | `docs/screenshots/` |
-| Docs as a website | `node scripts/build-docs-site.mjs` → `site/`; published by `.github/workflows/pages.yml` from `main` |
+| Docs as a website | `node scripts/build-docs-site.mjs` → `site/`; published by `.github/workflows/pages.yml` once Pages → Source is set to GitHub Actions |
 
 ## Principles the code enforces
 - Costs, availability and variance are never shown as complete when inputs are missing.
