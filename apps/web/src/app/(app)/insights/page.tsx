@@ -222,7 +222,7 @@ export default async function InsightsPage({ searchParams }: { searchParams: Pro
             <li>Accounted usage = recipe usage of matched sales + logged waste and breakage + batch ingredients + stock sent to events. Comps count as poured; voids count only if marked as made; refunds do not return stock.</li>
             <li>Unexplained = physical − accounted. Positive means more left the shelf than records explain. Percent is of accounted usage.</li>
             <li>Period: sales with a timestamp after the opening count and up to the closing count; date-only summaries only when fully inside the period ({report.period.fromDate} to {report.period.toDate}, business days end at {app.location.businessDayCutoff}).</li>
-            <li>Recipes and mappings in effect on each business date are used. {report.costBasis}.</li>
+            <li>The recipe version and ingredient mapping in effect at the end of each business day are used; for dates before a recipe or mapping was first entered, the one in effect at the closing count is used. {report.costBasis}.</li>
             <li>“Requires review” when unexplained usage exceeds both the count estimates (±) and {num(settings.variance_review_pct)}% of accounted usage, with at least {num(settings.min_sales_coverage_pct)}% of sales matched.</li>
             <li>Calculation version {report.calcVersion}.</li>
           </ul>

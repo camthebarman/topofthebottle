@@ -15,6 +15,10 @@ export default defineConfig({
     screenshot: "only-on-failure",
     launchOptions: executablePath ? { executablePath } : {},
   },
+  // Starts a production server unless E2E_BASE_URL points at a running one.
+  webServer: process.env.E2E_BASE_URL
+    ? undefined
+    : { command: "pnpm build && pnpm start -p 3000", url: "http://localhost:3000/sign-in", timeout: 300_000, reuseExistingServer: true },
   projects: [
     { name: "phone", use: { ...devices["Pixel 7"], viewport: { width: 360, height: 780 } } },
   ],

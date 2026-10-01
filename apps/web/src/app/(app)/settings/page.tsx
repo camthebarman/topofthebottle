@@ -18,6 +18,7 @@ export default async function SettingsPage() {
     ["/settings/billing", "Billing", "Subscription per location", "billing.manage"],
     ["/settings/data", "Your data", "Export, retention and deletion", "data.export"],
     ["/settings/audit", "Audit log", "Who changed what", "audit.view"],
+    ["/settings/import", "Import from earlier tools", "86d, Don't Go Pour, Food Cost, Clayton", "settings.manage"],
   ];
   const zones = ZONES.includes(app.location.timezone) ? ZONES : [app.location.timezone, ...ZONES];
   return (

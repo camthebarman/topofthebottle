@@ -4,6 +4,10 @@ import { expectNoHorizontalScroll, expectSaved, nyLocal, PASSWORD, shot, signUp,
 test.describe.configure({ mode: "serial" });
 
 test("full flow: organization to export", async ({ page, browser }) => {
+  const cspViolations: string[] = [];
+  page.on("console", (m) => {
+    if (m.type() === "error" && /Content Security Policy|Refused to/.test(m.text())) cspViolations.push(m.text());
+  });
   const owner = uniqueEmail("owner");
   await signUp(page, owner);
   await page.waitForURL(/onboarding/);
@@ -198,7 +202,8 @@ test("full flow: organization to export", async ({ page, browser }) => {
   await page.getByRole("button", { name: "Finalize count" }).click();
   await page.waitForURL(/finalized=1/);
 
-  // Enable AI explanations (development stub provider) to exercise the pipeline.
+  // Enable AI explanations. With E2E_AI_STUB=1 (dev server, AI_PROVIDER=stub) the stub exercises the
+  // pipeline; against a production build without a key the feature must stay unavailable.
   await page.goto("/settings");
   await page.getByLabel("Offer AI explanations in Insights").check();
   await page.getByRole("button", { name: "Save settings" }).click();
@@ -215,9 +220,13 @@ test("full flow: organization to export", async ({ page, browser }) => {
   expect(insightsText).not.toMatch(/theft|thief|steal|stole|fraud/);
   await shot(page, "09-insights");
   await expectNoHorizontalScroll(page);
-  await page.getByRole("button", { name: "Explain with AI" }).click();
-  await expect(page.getByText(/Development stub \(no AI provider\)/)).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByText(/Written by the development stub/)).toBeVisible();
+  if (process.env.E2E_AI_STUB === "1") {
+    await page.getByRole("button", { name: "Explain with AI" }).click();
+    await expect(page.getByText(/Development stub \(no AI provider\)/)).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByText(/Written by the development stub/)).toBeVisible();
+  } else {
+    await expect(page.getByRole("button", { name: "Explain with AI" })).toHaveCount(0);
+  }
 
   // ---------- bar book handoff acknowledged by staff ----------
   await page.goto("/barbook");
@@ -308,6 +317,7 @@ test("full flow: organization to export", async ({ page, browser }) => {
   expect(JSON.stringify(dump)).not.toContain("Alex Example");
   const staffExport = await staff.request.get("/api/export");
   expect(staffExport.status()).toBe(403);
+  expect(cspViolations, cspViolations.join("\n")).toEqual([]);
 });
 
 async function acceptInvite(browser: Browser, email: string, invitePath: string): Promise<Page> {

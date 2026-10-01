@@ -2,6 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import {
   businessDate,
+  businessDayBounds,
   capability,
   computeVariance,
   type CostingContext,
@@ -129,7 +130,9 @@ export async function buildReport(app: AppContext, openingId: string, closingId:
   }
 
   // Recipe versions and ingredient mappings in effect on each business date (end of that day).
-  const versions = versionsRes as VersionRow[];
+  // Normalise timestamps so they compare correctly as strings (PostgREST uses +00:00 and microseconds).
+  const iso = (t: string) => new Date(t).toISOString();
+  const versions = (versionsRes as VersionRow[]).map((v) => ({ ...v, effective_from: iso(v.effective_from) }));
   const versionComps = new Map<string, ComponentRow[]>();
   const vIds = versions.map((v) => v.id);
   for (let i = 0; i < vIds.length; i += 150) {
@@ -137,14 +140,35 @@ export async function buildReport(app: AppContext, openingId: string, closingId:
     const rows = (await fetchAll((a, b) => app.supabase.from("recipe_components").select("id, recipe_version_id, position, product_id, ingredient_id, sub_recipe_id, qty, unit, yield_pct, label").in("recipe_version_id", chunk).order("id").range(a, b))) as ComponentRow[];
     for (const r of rows) versionComps.set(r.recipe_version_id, [...(versionComps.get(r.recipe_version_id) ?? []), r]);
   }
-  const ingMaps = ingMapRes as { ingredient_id: string; product_id: string; effective_from: string; effective_to: string | null }[];
+  const ingMaps = (ingMapRes as { ingredient_id: string; product_id: string; effective_from: string; effective_to: string | null }[]).map((m) => ({ ...m, effective_from: iso(m.effective_from), effective_to: m.effective_to ? iso(m.effective_to) : null }));
   const ctxCache = new Map<string, CostingContext>();
+  // Version in effect at the end of each business day. For dates before a recipe or
+  // mapping was first entered, the version in effect at the closing count is used: it is
+  // the spec the bar settled on, rather than a first draft saved during setup.
+  const closeIso = iso(closing.counted_at);
+  const atClose = new Map<string, VersionRow>();
+  const firstEntered = new Map<string, string>();
+  for (const v of versions) {
+    const f = firstEntered.get(v.recipe_id);
+    if (!f || v.effective_from < f) firstEntered.set(v.recipe_id, v.effective_from);
+    if (v.effective_from > closeIso) continue;
+    const c = atClose.get(v.recipe_id);
+    if (!c || v.effective_from > c.effective_from || (v.effective_from === c.effective_from && v.version > c.version)) atClose.set(v.recipe_id, v);
+  }
+  const mapAtClose = new Map<string, (typeof ingMaps)[number]>();
+  const mapFirstEntered = new Map<string, string>();
+  for (const m of ingMaps) {
+    const f = mapFirstEntered.get(m.ingredient_id);
+    if (!f || m.effective_from < f) mapFirstEntered.set(m.ingredient_id, m.effective_from);
+    if (m.effective_from <= closeIso && (m.effective_to === null || m.effective_to > closeIso)) mapAtClose.set(m.ingredient_id, m);
+  }
   const contextFor = (date: string): CostingContext => {
     const cached = ctxCache.get(date);
     if (cached) return cached;
-    const endOfDay = new Date(Date.parse(`${date}T23:59:59Z`) + 86_400_000).toISOString();
+    const endOfDay = businessDayBounds(date, tz, cutoff).end.toISOString();
     const recipes = new Map<string, RecipeVersion>();
     const latest = new Map<string, VersionRow>();
+    for (const [rid, first] of firstEntered) if (first > endOfDay && atClose.has(rid)) latest.set(rid, atClose.get(rid)!);
     for (const v of versions) {
       if (v.effective_from > endOfDay) continue;
       const cur = latest.get(v.recipe_id);
@@ -158,6 +182,7 @@ export async function buildReport(app: AppContext, openingId: string, closingId:
       if (v.produces_product_id) prepForProduct.set(v.produces_product_id, rid);
     }
     const ingredientMap = new Map<string, string>();
+    for (const [iid, first] of mapFirstEntered) if (first > endOfDay && mapAtClose.has(iid)) ingredientMap.set(iid, mapAtClose.get(iid)!.product_id);
     for (const m of ingMaps) if (m.effective_from <= endOfDay && (m.effective_to === null || m.effective_to > endOfDay)) ingredientMap.set(m.ingredient_id, m.product_id);
     const ctx: CostingContext = { ...cat.ctx, recipes, ingredientMap, prepForProduct };
     ctxCache.set(date, ctx);
