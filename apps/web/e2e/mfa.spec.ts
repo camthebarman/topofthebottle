@@ -23,6 +23,9 @@ test("an enrolled second factor is required for pages, actions and API routes", 
   await page.getByLabel("Your name").fill("Owner Two");
   await page.getByRole("button", { name: /Create/ }).click();
   await page.waitForURL(/today/);
+  const session = (await page.context().cookies()).filter((c) => c.name.startsWith("sb-"));
+  expect(session.length).toBeGreaterThan(0);
+  for (const c of session) expect(c.httpOnly, `${c.name} must be HttpOnly`).toBe(true);
 
   await page.goto("/settings/security");
   await page.getByRole("button", { name: "Set up an authenticator app" }).click();

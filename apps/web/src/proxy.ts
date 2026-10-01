@@ -38,6 +38,8 @@ export async function proxy(request: NextRequest) {
 
   // Refresh the auth session cookie if needed; identity is verified with getClaims().
   const supabase = createServerClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "", {
+    // No browser Supabase client exists, so session cookies never need to be readable by scripts.
+    cookieOptions: { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" },
     cookies: {
       getAll() {
         return request.cookies.getAll();
