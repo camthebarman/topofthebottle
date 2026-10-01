@@ -10,9 +10,16 @@ import { UserError } from "@/lib/errors";
  */
 const buckets = new Map<string, { count: number; resetAt: number }>();
 
+/**
+ * Client address as seen by the nearest trusted proxy. Entries to the left of the ones our
+ * own proxies appended are client-supplied and can be forged, so we count from the right.
+ * TRUSTED_PROXY_HOPS is the number of proxies in front of the app (default 1).
+ */
 export async function clientIp(): Promise<string> {
   const h = await headers();
-  return h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "unknown";
+  const hops = Math.max(1, Number(process.env.TRUSTED_PROXY_HOPS ?? 1) || 1);
+  const chain = (h.get("x-forwarded-for") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  return chain[Math.max(0, chain.length - hops)] || h.get("x-real-ip") || "unknown";
 }
 
 export function hit(key: string, limit: number, windowMs: number): boolean {

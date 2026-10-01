@@ -16,6 +16,8 @@ export const signIn = action(
   z.object({ email: z.email("Enter a valid email"), password: z.string().min(1, "Enter your password"), next: z.string().optional() }),
   async ({ email, password, next }) => {
     await limit("sign-in", `${await clientIp()}:${email.toLowerCase()}`, 8, 60_000);
+    // Per account regardless of address, so rotating addresses cannot multiply guesses.
+    await limit("sign-in-account", email.toLowerCase(), 30, 15 * 60_000);
     const supabase = await createClient();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw new UserError("Email or password is incorrect.");
@@ -45,6 +47,7 @@ export const signUp = action(
 
 export const sendMagicLink = action(z.object({ email: z.email("Enter a valid email"), next: z.string().optional() }), async ({ email, next }) => {
   await limit("magic", `${await clientIp()}:${email.toLowerCase()}`, 3, 60_000);
+  await limit("magic-account", email.toLowerCase(), 6, 15 * 60_000);
   const supabase = await createClient();
   await supabase.auth.signInWithOtp({
     email,
