@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { SignOutButton } from "@/components/drafts";
 import { BottomNav, SideNav } from "@/components/shell/nav";
 import { buttonClass } from "@/components/ui";
@@ -9,9 +8,6 @@ import { switchContext } from "./context-actions";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const ctx = await getContext();
-  // Anyone who has enrolled a second factor must use it for this session.
-  const { data: aal } = await ctx.supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-  if (aal?.nextLevel === "aal2" && aal.currentLevel !== "aal2") redirect("/mfa");
   const { count } = await ctx.supabase.from("notifications").select("id", { count: "exact", head: true }).is("read_at", null).eq("org_id", ctx.org.orgId);
   const options: { value: string; label: string }[] = [];
   for (const m of ctx.memberships) {

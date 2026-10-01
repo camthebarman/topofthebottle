@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { businessDate, d } from "@tz/domain";
+import { addDays, businessDate, d } from "@tz/domain";
 import { Badge, Card, LinkButton, Notice, PageHeader, Stat } from "@/components/ui";
 import { dateLabel, money, pct } from "@/lib/format";
 import { getContext } from "@/lib/session";
@@ -18,7 +18,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
     orgSettings(app),
     app.supabase.from("barbook_entries").select("id, title, priority, due_date, assigned_to").eq("location_id", app.location.id).eq("status", "open").eq("is_task", true).order("due_date", { ascending: true, nullsFirst: false }).limit(6),
     app.supabase.from("barbook_acks").select("entry_id").eq("user_id", app.user.id),
-    app.supabase.from("barbook_entries").select("id, title").eq("location_id", app.location.id).eq("requires_ack", true).gte("business_date", new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10)).limit(20),
+    app.supabase.from("barbook_entries").select("id, title").eq("location_id", app.location.id).eq("requires_ack", true).gte("business_date", addDays(today, -14)).limit(20),
     app.supabase.rpc("my_published_shifts", { p_org: app.org.orgId, p_from: today, p_to: today }),
     app.can("invoices.upload") ? app.supabase.from("invoices").select("id, status, receiving_status").eq("location_id", app.location.id).or("status.in.(needs_review,extraction_failed),and(status.eq.approved,receiving_status.in.(not_received,partial))").limit(50) : Promise.resolve({ data: [] }),
     app.can("imports.manage") ? app.supabase.from("pos_imports").select("id").eq("location_id", app.location.id).in("status", ["uploaded", "needs_review"]).limit(50) : Promise.resolve({ data: [] }),

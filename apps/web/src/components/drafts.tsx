@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 const PREFIX = "tzdraft:";
 
@@ -9,34 +9,38 @@ const PREFIX = "tzdraft:";
  * organization. Nothing here has reached the server; the UI says so. Cleared
  * on sign-out and when the server confirms the save.
  */
+const listeners = new Set<() => void>();
+function notify() {
+  for (const l of listeners) l();
+}
+function subscribe(l: () => void) {
+  listeners.add(l);
+  return () => listeners.delete(l);
+}
+function read(key: string): string {
+  try {
+    return sessionStorage.getItem(key) ?? "";
+  } catch {
+    return ""; // storage unavailable: drafts are a convenience only
+  }
+}
+
 export function useDraft(scope: string, name: string) {
   const key = `${PREFIX}${scope}:${name}`;
-  const [value, setValue] = useState("");
-  const [restored, setRestored] = useState(false);
-  const loaded = useRef(false);
-  useEffect(() => {
-    try {
-      const v = sessionStorage.getItem(key);
-      if (v) {
-        setValue(v);
-        setRestored(true);
-      }
-    } catch {
-      /* storage unavailable: drafts are a convenience only */
-    }
-    loaded.current = true;
-  }, [key]);
+  const value = useSyncExternalStore(subscribe, () => read(key), () => "");
+  // Text present before the person typed anything in this view is a restored draft.
+  const [touched, setTouched] = useState(false);
   const update = (v: string) => {
-    setValue(v);
+    setTouched(true);
     try {
       if (v) sessionStorage.setItem(key, v);
       else sessionStorage.removeItem(key);
     } catch {
       /* ignore */
     }
+    notify();
   };
-  const clear = () => update("");
-  return { value, update, clear, restored };
+  return { value, update, clear: () => update(""), restored: !touched && value !== "" };
 }
 
 export function clearAllDrafts(): void {
@@ -46,6 +50,7 @@ export function clearAllDrafts(): void {
   } catch {
     /* ignore */
   }
+  notify();
 }
 
 export function SignOutButton({ action }: { action: () => Promise<void> }) {
@@ -64,6 +69,7 @@ export function ClearDrafts({ scope, names }: { scope: string; names: string[] }
     } catch {
       /* ignore */
     }
+    notify();
   }, [scope, names]);
   return null;
 }

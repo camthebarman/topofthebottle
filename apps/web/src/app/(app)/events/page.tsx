@@ -1,4 +1,4 @@
-import { Badge, Card, EmptyState, ListLink, PageHeader } from "@/components/ui";
+import { Badge, EmptyState, ListLink, PageHeader } from "@/components/ui";
 import { must } from "@/lib/action";
 import { dateLabel } from "@/lib/format";
 import { getContext, pagePerm } from "@/lib/session";

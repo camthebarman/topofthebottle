@@ -11,6 +11,8 @@ export interface SessionUser {
   id: string;
   email: string | null;
   aal: string | null;
+  /** True when the user has a verified second factor but this session has not used it. */
+  mfaPending: boolean;
 }
 
 export const getUser = cache(async (): Promise<SessionUser | null> => {
@@ -18,7 +20,13 @@ export const getUser = cache(async (): Promise<SessionUser | null> => {
   const { data, error } = await supabase.auth.getClaims();
   if (error || !data?.claims?.sub) return null;
   const c = data.claims as { sub: string; email?: string; aal?: string };
-  return { id: c.sub, email: c.email ?? null, aal: c.aal ?? null };
+  let mfaPending = false;
+  if (c.aal !== "aal2") {
+    // listFactors reads the user from the Auth server, not from the cookie.
+    const { data: factors } = await supabase.auth.mfa.listFactors();
+    mfaPending = (factors?.totp ?? []).some((f) => f.status === "verified");
+  }
+  return { id: c.sub, email: c.email ?? null, aal: c.aal ?? null, mfaPending };
 });
 
 export async function requireUser(): Promise<SessionUser> {
@@ -62,6 +70,8 @@ export interface AppContext {
  */
 export const getContext = cache(async (): Promise<AppContext> => {
   const user = await requireUser();
+  // Enforced here, not only in the layout, so server actions and API routes are covered too.
+  if (user.mfaPending) redirect("/mfa");
   const supabase = await createClient();
   const { data: rows, error } = await supabase
     .from("memberships")

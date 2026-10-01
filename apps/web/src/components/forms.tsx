@@ -43,14 +43,20 @@ export function ActionForm<T>({
 }) {
   const [state, formAction, pending] = useActionState<ActionState<T>, FormData>(action, { status: "idle" });
   const [dirty, setDirty] = useState(false);
+  const [seen, setSeen] = useState(state);
   const ref = useRef<HTMLFormElement>(null);
-  const lastState = useRef(state);
+  const handled = useRef(state);
+
+  // A new server result arrived: a success clears the unsaved marker (render-time update).
+  if (state !== seen) {
+    setSeen(state);
+    if (state.status === "success") setDirty(false);
+  }
 
   useEffect(() => {
-    if (state === lastState.current) return;
-    lastState.current = state;
+    if (state === handled.current) return;
+    handled.current = state;
     if (state.status === "success") {
-      setDirty(false);
       if (resetOnSuccess) ref.current?.reset();
       onSuccess?.(state);
     }
