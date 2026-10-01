@@ -78,7 +78,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
           const dayShifts = shifts.filter((s) => s.shift_date === d);
           if (!dayShifts.length && !scheduler) return null;
           return (
-            <Card key={d} title={<span>{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][dayOfWeek(d)]} {dateLabel(d)}{d === today ? " · today" : ""}</span>}>
+            <Card key={d} title={<span>{dateLabel(d)}{d === today ? " · today" : ""}</span>}>
               {dayShifts.length ? (
                 <ul className="divide-y divide-border">
                   {dayShifts.map((s) => (

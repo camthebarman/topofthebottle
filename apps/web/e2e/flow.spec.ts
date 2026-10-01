@@ -276,6 +276,7 @@ test("full flow: organization to export", async ({ page, browser }) => {
   await staff.goto(recipeUrl);
   await expect(staff.getByRole("heading", { name: "Negroni" })).toBeVisible();
   await expect(staff.getByText("Ingredient cost")).toHaveCount(0);
+  await expect(staff.getByText(/has no cost/)).toHaveCount(0);
 
   // ---------- beverage event ----------
   await page.goto("/events");

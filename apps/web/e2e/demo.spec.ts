@@ -40,6 +40,7 @@ test("demo: the bartender sees specs but not costs or Insights", async ({ page }
   await page.getByRole("link", { name: /Negroni/ }).first().click();
   await expect(page.getByRole("heading", { name: "Negroni" })).toBeVisible();
   await expect(page.getByText("Ingredient cost")).toHaveCount(0);
+  await expect(page.getByText(/has no cost/)).toHaveCount(0);
 });
 
 test("demo: account creation is refused even if the form is reached directly", async ({ page }) => {

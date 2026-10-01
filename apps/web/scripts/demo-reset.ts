@@ -367,7 +367,7 @@ async function main() {
   for (const day of COUNT_DAYS) {
     events.push({ when: at(day, "11:00"), run: async () => {
       consumeUntil(day);
-      const s = await ok(clients.bartender.from("count_sessions").insert({ org_id: orgId, location_id: loc, name: `Monday-style count ${usDate(day)}`, started_by: ids.bartender, counted_at: at(day, "11:00").toISOString() }).select("id").single(), "count session");
+      const s = await ok(clients.bartender.from("count_sessions").insert({ org_id: orgId, location_id: loc, name: `Weekly count`, started_by: ids.bartender, counted_at: at(day, "11:00").toISOString() }).select("id").single(), "count session");
       for (const p of PRODUCTS) {
         const id = pid.get(p.name)!;
         const q = physical.get(id) ?? 0;

@@ -34,11 +34,13 @@ export default async function RecipePage({ params, searchParams }: { params: Pro
   };
 
   const isMenuRecipe = recipe.kind !== "prep";
+  // Without cost access every product looks unpriced; that is not a problem with the recipe.
+  const attention = app.can("costs.view") ? s.cost.issues : s.cost.issues.filter((i) => i.code !== "missing_price");
   return (
     <>
       <PageHeader
         title={recipe.name}
-        description={<span className="capitalize">{recipe.kind}{recipe.category ? ` · ${recipe.category}` : ""}{version ? ` · version ${version.version}` : ""}{recipe.archived_at ? " · archived" : ""}</span>}
+        description={<span><span className="capitalize">{recipe.kind}</span>{recipe.category ? ` · ${recipe.category}` : ""}{version ? ` · Version ${version.version}` : ""}{recipe.archived_at ? " · archived" : ""}</span>}
         actions={app.can("recipes.edit") ? <LinkButton href={`/recipes/${id}/edit`}>Edit</LinkButton> : null}
       />
       <div className="space-y-4">
@@ -76,10 +78,10 @@ export default async function RecipePage({ params, searchParams }: { params: Pro
           </Card>
         ) : null}
 
-        {s.cost.issues.length ? (
+        {attention.length ? (
           <Card title="Needs attention">
             <ul className="space-y-3 text-sm">
-              {s.cost.issues.map((i) => (
+              {attention.map((i) => (
                 <li key={`${i.code}${i.ref}${i.message}`} className="rounded-lg border border-border p-3">
                   <p>{i.message}</p>
                   {i.path?.length ? <p className="text-xs text-muted">In {i.path.join(" → ")}</p> : null}
