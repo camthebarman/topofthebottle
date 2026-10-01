@@ -16,7 +16,7 @@ const REPO = "https://github.com/camthebarman/topofthebottle";
 const NAV = [
   ["Status", [["implementation-status.md", "Implementation status"], ["launch-blockers.md", "Launch blockers"], ["test-results.md", "Test results"], ["screenshots", "Screenshots"]]],
   ["Security", [["threat-model.md", "Threat model"], ["permission-matrix.md", "Permission matrix"], ["ai.md", "AI data handling"], ["source-audit.md", "Source audit"]]],
-  ["Operations", [["performance.md", "Performance"], ["cost-model.md", "Cost model"], ["runbooks/environment.md", "Environment"], ["runbooks/migrations.md", "Migrations"], ["runbooks/backup-restore.md", "Backup and restore"], ["runbooks/jobs.md", "Background jobs"], ["runbooks/retention-and-deletion.md", "Retention and deletion"], ["runbooks/incident-response.md", "Incidents"]]],
+  ["Operations", [["performance.md", "Performance"], ["cost-model.md", "Cost model"], ["runbooks/environment.md", "Environment"], ["runbooks/migrations.md", "Migrations"], ["runbooks/backup-restore.md", "Backup and restore"], ["runbooks/jobs.md", "Background jobs"], ["runbooks/retention-and-deletion.md", "Retention and deletion"], ["runbooks/incident-response.md", "Incidents"], ["runbooks/demo.md", "Public demo"]]],
   ["Reference", [["import-templates.md", "Import templates"], ["data-dictionary.md", "Data dictionary"], ["adr", "Decisions (ADRs)"]]],
 ];
 

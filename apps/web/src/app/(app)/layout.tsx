@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SignOutButton } from "@/components/drafts";
+import { DemoBanner } from "@/components/demo";
 import { BottomNav, SideNav } from "@/components/shell/nav";
 import { buttonClass } from "@/components/ui";
 import { getContext } from "@/lib/session";
@@ -22,6 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <SideNav />
       </aside>
       <div className="min-w-0 flex-1">
+        <DemoBanner />
         <header className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3 print:hidden">
           <form action={switchContext} className="flex min-w-0 items-center gap-2">
             <label htmlFor="ctx-switch" className="sr-only">Organization and location</label>

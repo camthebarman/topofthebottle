@@ -8,6 +8,7 @@ import { env } from "@/lib/env";
 import { fromDbError, UserError } from "@/lib/errors";
 import { getContext, requirePerm } from "@/lib/session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notInDemo } from "@/lib/demo";
 
 const pctField = z.string().trim().regex(/^\d+(\.\d+)?$/, "Enter a number");
 
@@ -58,6 +59,7 @@ export const saveOrgSettings = action(
 );
 
 export const addLocation = action(z.object({ name: z.string().trim().min(1).max(120), timezone: z.string().refine(isValidTimeZone, "Unknown time zone"), cutoff: z.string().regex(/^\d{2}:\d{2}$/) }), async (i) => {
+    notInDemo("Adding locations");
   const app = await getContext();
   requirePerm(app, "settings.manage");
   const res = await app.supabase.from("locations").insert({ org_id: app.org.orgId, name: i.name, timezone: i.timezone, business_day_cutoff: i.cutoff, currency: app.location.currency });
@@ -67,6 +69,7 @@ export const addLocation = action(z.object({ name: z.string().trim().min(1).max(
 });
 
 export const updateLocation = action(z.object({ locationId: zUuid, name: z.string().trim().min(1).max(120), timezone: z.string().refine(isValidTimeZone, "Unknown time zone"), cutoff: z.string().regex(/^\d{2}:\d{2}$/) }), async (i) => {
+    notInDemo("Renaming locations");
   const app = await getContext();
   requirePerm(app, "settings.manage");
   const res = await app.supabase.from("locations").update({ name: i.name, timezone: i.timezone, business_day_cutoff: i.cutoff }).eq("id", i.locationId).eq("org_id", app.org.orgId).select("id");
@@ -85,6 +88,7 @@ export const addArea = action(z.object({ name: z.string().trim().min(1).max(80) 
 });
 
 export const invite = action(z.object({ email: z.email("Enter a valid email"), role: z.enum(["owner", "manager", "bartender", "read_only"]), thisLocationOnly: z.string().optional() }), async (i) => {
+    notInDemo("Inviting people");
   const app = await getContext();
   requirePerm(app, "members.manage");
   const { data, error } = await app.supabase.rpc("create_invitation", { p_org: app.org.orgId, p_email: i.email, p_role: i.role, p_location_ids: i.thisLocationOnly ? [app.location.id] : null });
@@ -95,6 +99,7 @@ export const invite = action(z.object({ email: z.email("Enter a valid email"), r
 });
 
 export const revokeInvite = action(z.object({ invitationId: zUuid }), async ({ invitationId }) => {
+    notInDemo("Changing invitations");
   const app = await getContext();
   requirePerm(app, "members.manage");
   const { error } = await app.supabase.rpc("revoke_invitation", { p_invitation: invitationId });
@@ -104,6 +109,7 @@ export const revokeInvite = action(z.object({ invitationId: zUuid }), async ({ i
 });
 
 export const updateMember = action(z.object({ userId: zUuid, role: z.enum(["owner", "manager", "bartender", "read_only"]), status: z.enum(["active", "revoked"]), thisLocationOnly: z.string().optional() }), async (i) => {
+    notInDemo("Changing team members");
   const app = await getContext();
   requirePerm(app, "members.manage");
   if (i.userId === app.user.id && i.status === "revoked") throw new UserError("You cannot remove yourself.");
@@ -114,6 +120,7 @@ export const updateMember = action(z.object({ userId: zUuid, role: z.enum(["owne
 });
 
 export const requestDeletion = action(z.object({ confirm: z.string() }), async ({ confirm }) => {
+    notInDemo("Deleting the organization");
   const app = await getContext();
   requirePerm(app, "data.export");
   if (confirm.trim() !== app.org.orgName) throw new UserError("Type the organization name exactly to confirm.");

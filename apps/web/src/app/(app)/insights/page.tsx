@@ -118,6 +118,11 @@ export default async function InsightsPage({ searchParams }: { searchParams: Pro
           {canCost ? <Stat label="Unexplained usage to review" value={money(report.totals.unexplainedValueReview)} tone={review.length ? "warn" : "ok"} hint={`${review.length} product(s)`} /> : null}
         </div>
 
+        {report.recipesEnteredAfterPeriod.length ? (
+          <Notice tone="info" title="Recipes set up after this period">
+            {report.recipesEnteredAfterPeriod.join(", ")} {report.recipesEnteredAfterPeriod.length === 1 ? "was" : "were"} first entered after the closing count, so the first saved version is used for these sales. If the spec changed since, the figures for this period may not match how the drink was made then.
+          </Notice>
+        ) : null}
         {report.partialAggregateLines ? <Notice tone="warn">{report.partialAggregateLines} summary-report line(s) cover dates only partly inside this period and are left out. Align summary report ranges with count dates.</Notice> : null}
 
         <Card title="Inventory variance">
@@ -222,7 +227,7 @@ export default async function InsightsPage({ searchParams }: { searchParams: Pro
             <li>Accounted usage = recipe usage of matched sales + logged waste and breakage + batch ingredients + stock sent to events. Comps count as poured; voids count only if marked as made; refunds do not return stock.</li>
             <li>Unexplained = physical − accounted. Positive means more left the shelf than records explain. Percent is of accounted usage.</li>
             <li>Period: sales with a timestamp after the opening count and up to the closing count; date-only summaries only when fully inside the period ({report.period.fromDate} to {report.period.toDate}, business days end at {app.location.businessDayCutoff}).</li>
-            <li>The recipe version and ingredient mapping in effect at the end of each business day are used; for dates before a recipe or mapping was first entered, the one in effect at the closing count is used. {report.costBasis}.</li>
+            <li>The recipe version and ingredient mapping in effect at the end of each business day are used; for dates before a recipe or mapping was first entered, the one in effect at the closing count is used, or the first one saved if it was entered after the period. {report.costBasis}.</li>
             <li>“Requires review” when unexplained usage exceeds both the count estimates (±) and {num(settings.variance_review_pct)}% of accounted usage, with at least {num(settings.min_sales_coverage_pct)}% of sales matched.</li>
             <li>Calculation version {report.calcVersion}.</li>
           </ul>

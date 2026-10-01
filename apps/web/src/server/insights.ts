@@ -70,6 +70,8 @@ export interface InsightsReport {
   voidCompByHour: { hour: number; kind: string; lines: number; quantity: string }[];
   partialAggregateLines: number;
   costBasis: string;
+  /** Recipes sold in the period that were first entered after the closing count; their first version was used. */
+  recipesEnteredAfterPeriod: string[];
   inputHash: string;
   calcVersion: string;
 }
@@ -96,8 +98,8 @@ export async function buildReport(app: AppContext, openingId: string, closingId:
     app.supabase.rpc("sales_partial_overlap", { p_org: app.org.orgId, p_location: app.location.id, p_from_date: fromDate, p_to_date: toDate }),
     fetchAll((a, b) => app.supabase.from("pos_item_mappings").select("id, item_key, item_name, recipe_id, not_stock, servings_per_unit, effective_from, effective_to").eq("location_id", app.location.id).order("id").range(a, b)),
     fetchAll((a, b) => app.supabase.from("modifier_mappings").select("id, modifier_key, item_key, actions, effective_from, effective_to").eq("location_id", app.location.id).order("id").range(a, b)),
-    fetchAll((a, b) => app.supabase.from("recipe_versions").select("*").eq("org_id", app.org.orgId).lte("effective_from", closing.counted_at).order("id").range(a, b)),
-    fetchAll((a, b) => app.supabase.from("ingredient_mappings").select("id, ingredient_id, product_id, effective_from, effective_to").eq("location_id", app.location.id).lte("effective_from", closing.counted_at).order("id").range(a, b)),
+    fetchAll((a, b) => app.supabase.from("recipe_versions").select("*").eq("org_id", app.org.orgId).order("id").range(a, b)),
+    fetchAll((a, b) => app.supabase.from("ingredient_mappings").select("id, ingredient_id, product_id, effective_from, effective_to").eq("location_id", app.location.id).order("id").range(a, b)),
     app.can("costs.view") ? app.supabase.rpc("ledger_unit_costs", { p_org: app.org.orgId, p_location: app.location.id, p_as_of: closing.counted_at }) : Promise.resolve({ data: [], error: null }),
     app.supabase.rpc("void_comp_by_hour", { p_org: app.org.orgId, p_location: app.location.id, p_from: opening.counted_at, p_to: closing.counted_at, p_tz: tz }),
   ]);
@@ -144,7 +146,9 @@ export async function buildReport(app: AppContext, openingId: string, closingId:
   const ctxCache = new Map<string, CostingContext>();
   // Version in effect at the end of each business day. For dates before a recipe or
   // mapping was first entered, the version in effect at the closing count is used: it is
-  // the spec the bar settled on, rather than a first draft saved during setup.
+  // the spec the bar settled on, rather than a first draft saved during setup. A recipe
+  // first entered after the closing count (set up after the period) uses its first version,
+  // and the report lists it.
   const closeIso = iso(closing.counted_at);
   const atClose = new Map<string, VersionRow>();
   const firstEntered = new Map<string, string>();
@@ -155,6 +159,14 @@ export async function buildReport(app: AppContext, openingId: string, closingId:
     const c = atClose.get(v.recipe_id);
     if (!c || v.effective_from > c.effective_from || (v.effective_from === c.effective_from && v.version > c.version)) atClose.set(v.recipe_id, v);
   }
+  const enteredAfterPeriod: string[] = [];
+  for (const [rid] of firstEntered) {
+    if (atClose.has(rid)) continue;
+    const first = versions.filter((v) => v.recipe_id === rid).sort((x, y) => x.effective_from.localeCompare(y.effective_from) || x.version - y.version)[0]!;
+    atClose.set(rid, first);
+    const name = cat.recipeById.get(rid)?.name;
+    if (name) enteredAfterPeriod.push(rid);
+  }
   const mapAtClose = new Map<string, (typeof ingMaps)[number]>();
   const mapFirstEntered = new Map<string, string>();
   for (const m of ingMaps) {
@@ -162,6 +174,7 @@ export async function buildReport(app: AppContext, openingId: string, closingId:
     if (!f || m.effective_from < f) mapFirstEntered.set(m.ingredient_id, m.effective_from);
     if (m.effective_from <= closeIso && (m.effective_to === null || m.effective_to > closeIso)) mapAtClose.set(m.ingredient_id, m);
   }
+  for (const m of [...ingMaps].sort((x, y) => x.effective_from.localeCompare(y.effective_from))) if (!mapAtClose.has(m.ingredient_id)) mapAtClose.set(m.ingredient_id, m);
   const contextFor = (date: string): CostingContext => {
     const cached = ctxCache.get(date);
     if (cached) return cached;
@@ -289,6 +302,10 @@ export async function buildReport(app: AppContext, openingId: string, closingId:
     voidCompByHour: ((vcRes.data ?? []) as { hour: number; kind: string; lines: number; quantity: string }[]),
     partialAggregateLines: Number(partialRes.data ?? 0),
     costBasis,
+    recipesEnteredAfterPeriod: (() => {
+      const sold = new Set(salesGroups.map((g) => mapFor(g.item_key, g.business_date)?.recipe_id).filter(Boolean));
+      return enteredAfterPeriod.filter((rid) => sold.has(rid)).map((rid) => cat.recipeById.get(rid)?.name ?? rid).sort();
+    })(),
     calcVersion: CALC_VERSION,
   };
   const inputHash = createHash("sha256").update(JSON.stringify({ v: CALC_VERSION, lines: report.lines, coverage: report.coverage, unresolved: report.unresolved })).digest("hex");

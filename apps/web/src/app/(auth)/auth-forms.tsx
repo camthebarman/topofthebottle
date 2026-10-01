@@ -47,3 +47,25 @@ export function SignUpForm({ next }: { next?: string }) {
     </ActionForm>
   );
 }
+
+export function DemoSignIn({ accounts, password, next }: { accounts: readonly { email: string; role: string; note: string }[]; password: string; next?: string }) {
+  return (
+    <ul className="grid gap-1">
+      {accounts.map((a) => (
+        <li key={a.email}>
+          <ActionForm action={signIn} className="space-y-1">
+            <input type="hidden" name="email" value={a.email} />
+            <input type="hidden" name="password" value={password} />
+            <input type="hidden" name="next" value={next ?? ""} />
+            <SubmitButton variant="secondary" className="w-full" pendingText={`Signing in as ${a.role}…`}>
+              <span className="grid w-full text-left">
+                <span className="font-semibold">Sign in as {a.role}</span>
+                <span className="text-xs font-normal text-muted">{a.note}</span>
+              </span>
+            </SubmitButton>
+          </ActionForm>
+        </li>
+      ))}
+    </ul>
+  );
+}

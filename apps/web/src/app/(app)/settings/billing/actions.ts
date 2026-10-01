@@ -8,6 +8,7 @@ import { UserError } from "@/lib/errors";
 import { getContext, requirePerm } from "@/lib/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { billingConfigured, stripe } from "@/server/billing";
+import { notInDemo } from "@/lib/demo";
 
 async function customerFor(orgId: string, orgName: string, email: string | null): Promise<string> {
   const admin = createAdminClient();
@@ -19,6 +20,7 @@ async function customerFor(orgId: string, orgName: string, email: string | null)
 }
 
 export const startCheckout = action(z.object({}), async () => {
+    notInDemo("Billing");
   const app = await getContext();
   requirePerm(app, "billing.manage");
   if (!billingConfigured()) throw new UserError("Billing is not set up on this server.", "unavailable");
@@ -37,6 +39,7 @@ export const startCheckout = action(z.object({}), async () => {
 });
 
 export const openPortal = action(z.object({}), async () => {
+    notInDemo("Billing");
   const app = await getContext();
   requirePerm(app, "billing.manage");
   if (!billingConfigured()) throw new UserError("Billing is not set up on this server.", "unavailable");

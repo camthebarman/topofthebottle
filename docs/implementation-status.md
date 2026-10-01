@@ -43,7 +43,7 @@ Nothing here is a claim of production readiness. See `docs/launch-blockers.md`.
 | Structured redacted logs with correlation ids | Implemented | `src/lib/log.ts`; used in actions and uploads |
 | Dependency and secret scanning | Verified | GitHub Actions run on this branch: `pnpm audit` and gitleaks passed |
 | Backup/restore drill | Verified (database) | `scripts/backup-restore-check.sh` locally and in CI; Storage restore not drilled |
-| Export and deletion workflows, retention | Verified | e2e export; `retention.test.ts` |
+| Export and deletion workflows, retention | Verified | e2e export; `retention.test.ts`; `03_org_deletion.test.sql` deletes a populated organization (recipes, ledger, transfer) |
 | Stripe checkout, portal, signed idempotent webhooks, entitlements, grace | Partial | Webhook signature/replay/out-of-order verified (`stripe.test.ts`); checkout and portal **not run** (no Stripe test account in this environment) |
 
 ## Product (§5–9)
@@ -91,6 +91,7 @@ Nothing here is a claim of production readiness. See `docs/launch-blockers.md`.
 | Square preset | **Unverified draft** | No authoritative header reference |
 | Lightspeed, Clover | Generic mapper only | |
 | Direct POS integrations, Zapier | Out of scope (future) | |
+| Recipes entered after the analysed period | Verified (demo data) | First saved version is used and the report names those recipes |
 | Capability levels, variance formula, method, uncertainty, coverage, freshness | Verified | `variance.test.ts` (brief fixture: +500 mL, $10, no accusation); e2e Insights |
 | AI explanations with validated, vetted, cited output; no-AI fallback | Verified with stub / Blocked live | Vet tests; e2e stub. Live provider not called |
 
@@ -103,9 +104,20 @@ Nothing here is a claim of production readiness. See `docs/launch-blockers.md`.
 | Runbooks, environment docs, migrations, cost model | Done | `docs/runbooks/*`, `docs/cost-model.md` |
 | Performance workloads with environment | Verified | `docs/performance.md`, `docs/evidence/perf-2026-10-01.json` |
 
+## Public demo
+| Requirement | Status | Evidence |
+|---|---|---|
+| Demo mode (banner, one-tap roles, unsafe actions refused) | Verified locally | `e2e/demo.spec.ts`, `demo.test.ts` |
+| Nightly demo data rebuild through the app's own functions and import jobs | Verified locally | `pnpm --filter web demo:reset` run repeatedly against the local stack |
+| Hosted demo (Supabase + Vercel) | Blocked | Needs the owner's accounts; steps in `docs/runbooks/demo.md` |
+
 ## Checkpoint log
 - 2026-09-30: domain engine; schema and RLS; products, recipes, menu, inventory; invoices; POS
   import; Bar Book, schedule, events; Insights; billing; hardening.
 - 2026-10-01: MFA enforced in `getContext`; HttpOnly cookies; unique field ids; TRUNCATE revoked;
   invoice reversal/correction; CSV invoice rows never dropped silently; trusted-hop client IP;
   retention, rate-limit, reversal, stock, MFA and secondary-flow tests; CI; documentation.
+- 2026-10-01 (later): docs site; demo mode and demo data. Building the demo found two real bugs, both
+  fixed and tested: organizations with deliveries, transfers or recipes could not be deleted (missing
+  cascade paths and immediate foreign-key checks), and Insights ignored recipes entered after the
+  analysed period.

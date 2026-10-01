@@ -8,8 +8,10 @@ import { fromDbError } from "@/lib/errors";
 import { clientIp, limit } from "@/lib/rate-limit";
 import { CONTEXT_COOKIE, requireUser } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
+import { notInDemo } from "@/lib/demo";
 
 export const acceptInvite = action(z.object({ token: z.string().regex(/^[0-9a-f]{48}$/, "Invalid invitation"), displayName: z.string().trim().max(80).optional() }), async ({ token, displayName }) => {
+    notInDemo("Accepting invitations");
   const user = await requireUser();
   await limit("invite", `${await clientIp()}:${user.id}`, 10, 60_000);
   const supabase = await createClient();

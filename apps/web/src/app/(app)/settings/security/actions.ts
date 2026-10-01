@@ -6,8 +6,10 @@ import { action } from "@/lib/action";
 import { UserError } from "@/lib/errors";
 import { requireUser } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
+import { notInDemo } from "@/lib/demo";
 
 export const startTotp = action(z.object({}), async () => {
+    notInDemo("Two-factor setup");
   await requireUser();
   const supabase = await createClient();
   // Remove abandoned, unverified factors first so enrolment can be retried.
@@ -19,6 +21,7 @@ export const startTotp = action(z.object({}), async () => {
 });
 
 export const verifyTotp = action(z.object({ factorId: z.string().min(1).max(64), code: z.string().regex(/^\d{6}$/, "Enter the 6-digit code") }), async ({ factorId, code }) => {
+    notInDemo("Two-factor setup");
   await requireUser();
   const supabase = await createClient();
   const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId, code });

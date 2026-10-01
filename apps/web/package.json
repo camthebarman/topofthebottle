@@ -11,6 +11,7 @@
     "test": "vitest run test/unit",
     "test:e2e": "playwright test",
     "worker": "tsx --conditions=react-server --env-file=.env.local scripts/worker.ts",
+    "demo:reset": "tsx --conditions=react-server scripts/demo-reset.ts",
     "test:integration": "vitest run test/integration",
     "test:perf": "vitest run test/perf"
   },

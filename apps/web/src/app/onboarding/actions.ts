@@ -7,6 +7,7 @@ import { action, zRequired } from "@/lib/action";
 import { fromDbError } from "@/lib/errors";
 import { CONTEXT_COOKIE, requireUser } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
+import { notInDemo } from "@/lib/demo";
 
 export const createOrganization = action(
   z.object({
@@ -16,6 +17,7 @@ export const createOrganization = action(
     displayName: z.string().trim().max(80).optional(),
   }),
   async (input) => {
+    notInDemo("Creating organizations");
     await requireUser();
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("create_organization", {

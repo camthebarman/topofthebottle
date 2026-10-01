@@ -1,0 +1,61 @@
+name: Demo reset
+
+# Rebuilds the public demo's data every night (and on demand). Does nothing until the demo
+# secrets are set: DEMO_SUPABASE_URL, DEMO_SUPABASE_ANON_KEY, DEMO_SUPABASE_SERVICE_ROLE_KEY,
+# DEMO_PASSWORD. Only touches @demo.tablezero.test accounts and their organization.
+# See docs/runbooks/demo.md.
+
+on:
+  schedule:
+    - cron: "52 8 * * *"   # about 03:52 in Chicago (CDT), after the demo bar "closes"
+  workflow_dispatch:
+    inputs:
+      migrate:
+        description: "Apply database migrations to the demo project first"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: demo-reset
+  cancel-in-progress: false
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HAS_SECRETS: ${{ secrets.DEMO_SUPABASE_SERVICE_ROLE_KEY != '' }}
+    steps:
+      - name: Skip when the demo is not configured
+        if: env.HAS_SECRETS != 'true'
+        run: echo "Demo secrets are not set; nothing to do."
+      - uses: actions/checkout@v4
+        if: env.HAS_SECRETS == 'true'
+      - uses: pnpm/action-setup@v4
+        if: env.HAS_SECRETS == 'true'
+      - uses: actions/setup-node@v4
+        if: env.HAS_SECRETS == 'true'
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+        if: env.HAS_SECRETS == 'true'
+      - name: Apply migrations to the demo project
+        if: env.HAS_SECRETS == 'true' && inputs.migrate
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.DEMO_DB_PASSWORD }}
+          PROJECT_REF: ${{ secrets.DEMO_PROJECT_REF }}
+        run: |
+          pnpm exec supabase link --project-ref "$PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+          pnpm exec supabase db push --password "$SUPABASE_DB_PASSWORD"
+      - name: Rebuild demo data
+        if: env.HAS_SECRETS == 'true'
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.DEMO_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.DEMO_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.DEMO_SUPABASE_SERVICE_ROLE_KEY }}
+          DEMO_PASSWORD: ${{ secrets.DEMO_PASSWORD }}
+          APP_URL: https://example.invalid
+        run: pnpm --filter web demo:reset

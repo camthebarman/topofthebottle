@@ -30,6 +30,10 @@ Demo accounts (local only, password `demo-password-123`): `owner@demo.test`,
 `manager@demo.test`, `bartender@demo.test`, and `other-org@demo.test` (a separate tenant).
 Background jobs run after each request; for a steady worker: `pnpm --filter web worker`.
 
+## Public demo
+`DEMO_MODE=1` turns on a shareable demo with one-tap role sign-in and invented data rebuilt nightly
+by `pnpm --filter web demo:reset`. Setup for a hosted demo: `docs/runbooks/demo.md`.
+
 ## Test
 ```
 pnpm typecheck && pnpm --filter web lint

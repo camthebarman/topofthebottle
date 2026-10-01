@@ -9,6 +9,7 @@ import { UserError } from "@/lib/errors";
 import { clientIp, limit } from "@/lib/rate-limit";
 import { CONTEXT_COOKIE } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
+import { isDemo, notInDemo } from "@/lib/demo";
 
 const safeNext = (n: unknown) => (typeof n === "string" && /^\/[A-Za-z0-9/_-]*$/.test(n) && !n.startsWith("//") ? n : "/today");
 
@@ -17,7 +18,8 @@ export const signIn = action(
   async ({ email, password, next }) => {
     await limit("sign-in", `${await clientIp()}:${email.toLowerCase()}`, 8, 60_000);
     // Per account regardless of address, so rotating addresses cannot multiply guesses.
-    await limit("sign-in-account", email.toLowerCase(), 30, 15 * 60_000);
+    // (Skipped in the demo, where the accounts are shared and public.)
+    if (!isDemo()) await limit("sign-in-account", email.toLowerCase(), 30, 15 * 60_000);
     const supabase = await createClient();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw new UserError("Email or password is incorrect.");
@@ -32,6 +34,7 @@ export const signUp = action(
     next: z.string().optional(),
   }),
   async ({ email, password, next }) => {
+    notInDemo("Creating accounts");
     await limit("sign-up", await clientIp(), 5, 60_000);
     const supabase = await createClient();
     const { data, error } = await supabase.auth.signUp({
@@ -46,6 +49,7 @@ export const signUp = action(
 );
 
 export const sendMagicLink = action(z.object({ email: z.email("Enter a valid email"), next: z.string().optional() }), async ({ email, next }) => {
+    notInDemo("Email sign-in links");
   await limit("magic", `${await clientIp()}:${email.toLowerCase()}`, 3, 60_000);
   await limit("magic-account", email.toLowerCase(), 6, 15 * 60_000);
   const supabase = await createClient();
