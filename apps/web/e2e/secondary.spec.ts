@@ -3,7 +3,7 @@ import { expectNoHorizontalScroll, expectSaved, shot } from "./helpers";
 
 // Flows not covered by the main journey, run against the seeded demo organization.
 async function signedIn(browser: Browser, email: string): Promise<Page> {
-  const ctx = await browser.newContext({ viewport: { width: 360, height: 780 }, baseURL: test.info().project.use.baseURL });
+  const ctx = await browser.newContext({ viewport: test.info().project.use.viewport, baseURL: test.info().project.use.baseURL });
   const p = await ctx.newPage();
   p.on("dialog", (d) => void d.accept());
   await p.goto("/sign-in");

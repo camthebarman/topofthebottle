@@ -20,6 +20,8 @@ export default defineConfig({
     ? undefined
     : { command: "pnpm build && pnpm start -p 3000", url: "http://localhost:3000/sign-in", timeout: 300_000, reuseExistingServer: true },
   projects: [
+    // The brief's range is 360–430 px; run everything at both ends.
     { name: "phone", use: { ...devices["Pixel 7"], viewport: { width: 360, height: 780 } } },
+    { name: "phone-large", use: { ...devices["Pixel 7"], viewport: { width: 430, height: 932 } } },
   ],
 });

@@ -321,7 +321,7 @@ test("full flow: organization to export", async ({ page, browser }) => {
 });
 
 async function acceptInvite(browser: Browser, email: string, invitePath: string): Promise<Page> {
-  const ctx = await browser.newContext({ viewport: { width: 360, height: 780 }, baseURL: test.info().project.use.baseURL });
+  const ctx = await browser.newContext({ viewport: test.info().project.use.viewport, baseURL: test.info().project.use.baseURL });
   const p = await ctx.newPage();
   await p.goto(`/sign-up?next=${encodeURIComponent(invitePath)}`);
   await p.getByLabel("Email").fill(email);

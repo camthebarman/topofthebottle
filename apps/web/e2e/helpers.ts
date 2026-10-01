@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 
 export const PASSWORD = "correct horse battery staple";
 
@@ -35,7 +35,8 @@ export async function expectNoHorizontalScroll(page: Page): Promise<void> {
 
 export async function shot(page: Page, name: string): Promise<void> {
   const dir = process.env.SCREENSHOT_DIR;
-  if (dir) await page.screenshot({ path: `${dir}/${name}.png`, fullPage: true });
+  // Committed screenshots are the 360 px run.
+  if (dir && test.info().project.name === "phone") await page.screenshot({ path: `${dir}/${name}.png`, fullPage: true });
 }
 
 /** Wait for an ActionForm to report success. */
